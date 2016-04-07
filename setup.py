@@ -13,7 +13,7 @@ from cyrand import include_dir as rng_dir
 
 setup(
     name='dpmix',
-    version='0.4',
+    version='0.5a',
     packages=['dpmix'],
     package_dir={'dpmix': 'src'},
     description='Optimized (and GPU enhanced) fitting of Gaussian Mixture Models',
