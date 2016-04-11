@@ -1,82 +1,35 @@
 """
-Support for multi-GPU via threading for dpmix MCMC
 Written by: Andrew Cron
 """
 
 from mpi4py import MPI
 import numpy as np
-import sys
-import os
 from utils import MCMC_Task
+import gpustats.util as gpu_util
 
 # Multi GPU
 _datadevmap = {}
 _dataind = {}
 
 
-def init_GPUWorkers(data, devslist):
+def init_GPUWorkers(data, device_number):
+    """
+    Send data to GPU device
+    """
 
-    worker_file = os.path.dirname(__file__) + os.sep + 'gpuworker.py'
-    ndev = 0
-    for devs in devslist.itervalues():
-        ndev += len(devs)
-    devs_toinit = devslist.copy()
+    # initialize GPU with its own random seed...not sure this is necessary now?
+    # this allows for reproducible runs if the calling application
+    # sets its own random seed
+    random_seed = np.random.randint(2 ** 31)
 
-    workers = MPI.COMM_SELF.Spawn(
-        sys.executable,
-        args=[worker_file],
-        maxprocs=ndev
-    )
+    gpu_util.threadSafeInit(device_number)
+    alldata = []
+    gdata = []
+    dataind = 0
 
     # dpmix and BEM
     if type(data) == np.ndarray:
-        nobs, ndim = data.shape
-        lenpart = nobs / ndev
-        partitions = range(0, nobs, lenpart)
-        if len(partitions) == ndev:
-            partitions.append(nobs)
-        else:
-            partitions[-1] = nobs
-    
-        # launch threads
-        for i in xrange(ndev):
-            todat = np.asarray(data[partitions[i]:partitions[i+1]], dtype='d')
-            task = np.array(0, dtype='i')
-            
-            workers.Isend([task, MPI.INT], dest=i, tag=11)
-
-            # get the host name
-            host_name_len = np.array(0, dtype='i')
-            workers.Recv([host_name_len, MPI.INT], source=i, tag=30)
-            host_name = np.empty(int(host_name_len), dtype='c')
-            workers.Recv([host_name, MPI.CHAR], source=i, tag=31)
-
-            # get a device to init on that machine
-            hostdevs = devs_toinit[host_name.tostring()]
-            cdev = hostdevs[0]
-            hostdevs = np.delete(hostdevs, 0)
-            devs_toinit[host_name.tostring()] = hostdevs
-
-            # for task 0, initialize workers with their own random seed
-            # this allows for reproducible runs if the calling application
-            # sets its own random seed
-            random_seed = np.random.randint(2**31)
-
-            # the task 0 params send the data shape, device #, & seed
-            params = np.array(
-                [
-                    todat.shape[0],
-                    todat.shape[1],
-                    int(cdev),
-                    random_seed
-                ],
-                dtype='i'
-            )
-            workers.Send([params, MPI.INT], dest=i, tag=12)
-            workers.Send([todat, MPI.DOUBLE], dest=i, tag=13)
-            workers.Recv([task, MPI.INT], source=i, tag=14)
-
-            i += 1
+        gdata.append(to_gpu(np.asarray(data, dtype=np.float32)))
     else:  # HDP...one or more data sets per GPU
         ndata = len(data)
         for i in xrange(ndata):
