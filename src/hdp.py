@@ -19,7 +19,7 @@ try:
     import pycuda
     import pycuda.driver
     try:
-        from multigpu import init_GPUWorkers, kill_GPUWorkers, \
+        from multigpu_copy import init_GPUWorkers, kill_GPUWorkers, \
             get_hdp_labels_GPU
         _has_gpu = True
     except (ImportError, pycuda._driver.RuntimeError):
@@ -76,6 +76,10 @@ class HDPNormalMixture(DPNormalMixture):
                  nu0=None, Phi0=None, e0=5, f0=0.1, g0=0.1, h0=0.1,
                  mu0=None, Sigma0=None, weights0=None, alpha0=1,
                  gpu=None, parallel=False, verbose=False):
+
+        # regardless of data class or _has_gpu, initialize gpu data to None
+        # this gets set in sample method if a gpu device is available
+        self.gpu_data = None
 
         if not issubclass(type(data), HDPNormalMixture):
             # check for functioning gpu
@@ -196,6 +200,7 @@ class HDPNormalMixture(DPNormalMixture):
             thin=1,
             tune_interval=100,
             ident=False,
+            device=None,
             callback=None
     ):
         """
@@ -211,9 +216,10 @@ class HDPNormalMixture(DPNormalMixture):
                 print "starting GPU enabled MCMC"
             else:
                 print "starting MCMC"
-        # multiGPU init
+
+        # if a gpu is available, send data to device & save gpu_data
         if self.gpu:
-            self.gpu_workers = init_GPUWorkers(self.data, self.dev_list)
+            self.gpu_data = init_GPUWorkers(self.data, device)
 
         self._ident = ident
         self._setup_storage(niter, thin)
@@ -285,8 +291,6 @@ class HDPNormalMixture(DPNormalMixture):
             elif (nburn+i+1) % self._tune_interval == 0:
                 self._tune()
         self.stick_beta = stick_beta.copy()
-        if self.gpu:
-            kill_GPUWorkers(self.gpu_workers)
 
     def _setup_storage(self, niter=1000, thin=1):
         nresults = niter // thin
@@ -301,7 +305,7 @@ class HDPNormalMixture(DPNormalMixture):
         # gets the latent classifications .. easily done with current multigpu
         zhat = []
         if self.gpu:
-            return get_hdp_labels_GPU(self.gpu_workers, weights, mu, Sigma, self._ident)
+            return get_hdp_labels_GPU(self.gpu_data, weights, mu, Sigma, self._ident)
 
         else:
             labels = [np.zeros(self.nobs[j]) for j in range(self.ngroups)]

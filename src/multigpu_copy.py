@@ -22,11 +22,6 @@ def init_GPUWorkers(data, device_number):
     Send data to GPU device
     """
 
-    # initialize GPU with its own random seed...not sure this is necessary now?
-    # this allows for reproducible runs if the calling application
-    # sets its own random seed
-    random_seed = np.random.randint(2 ** 31)
-
     gpu_util.threadSafeInit(device_number)
     gpu_data = []
 
@@ -43,82 +38,42 @@ def init_GPUWorkers(data, device_number):
     return gpu_data
 
 
-def get_hdp_labels_GPU(workers, w, mu, Sigma, relabel=False):
+def get_hdp_labels_GPU(gpu_data, w, mu, Sigma, relabel=False):
 
-    ndev = workers.remote_group.size
-    ndata = len(_datadevmap)
-
-    tasks = []
-    for _i in xrange(ndev):
-        tasks.append([])
     labels = []
     Z = []
-    for _i in xrange(ndata):
-        labels.append(None)
-        Z.append(None)
 
-    # setup task
-    for i in xrange(ndata):
-        tasks[_datadevmap[i]].append(
-            MCMC_Task(Sigma.shape[0], relabel, _dataind[i], i)
+    for i, data_set in enumerate(gpu_data):
+        densities = gpustats.mvnpdf_multi(
+            data_set,
+            mu,
+            Sigma,
+            weights=w[i].flatten(),
+            get=False,
+            logged=True,
+            order='C'
         )
 
-    for i in xrange(ndev):
-        # send the number of tasks
-        tsk = np.array(1, dtype='i')
-        workers.Isend([tsk, MPI.INT], dest=i, tag=11)
-        numtasks = np.array(len(tasks[i]), dtype='i')
-        workers.Send([numtasks, MPI.INT], dest=i, tag=12)
+        if relabel:
+            Z.append(
+                np.asarray(
+                    cuda_functions.gpu_apply_row_max(densities)[1].get(),
+                    dtype='i'
+                )
+            )
+        else:
+            Z.append(None)
 
-        for tsk in tasks[i]:
-            params = np.array(
-                [
-                    tsk.dataind,
-                    tsk.ncomp,
-                    int(tsk.relabel) + 1,
-                    tsk.gid
-                ],
+        labels.append(
+            np.asarray(
+                gpu_sampler.sample_discrete(densities, logged=True),
                 dtype='i'
             )
-            workers.Send([params, MPI.INT], dest=i, tag=13)
+        )
 
-            workers.Send(
-                [np.asarray(w[tsk.gid].copy(), dtype='d'), MPI.DOUBLE],
-                dest=i,
-                tag=21
-            )
-            workers.Send(
-                [np.asarray(mu, dtype='d'), MPI.DOUBLE],
-                dest=i,
-                tag=22
-            )
-            workers.Send(
-                [np.asarray(Sigma, dtype='d'), MPI.DOUBLE],
-                dest=i,
-                tag=23
-            )
+        densities.gpudata.free()
+        del densities
 
-    # wait for results from any device in any order ... 
-    res_devs = [_i for _i in range(ndev)]
-    while len(res_devs) > 0:
-        for i in res_devs:
-            if workers.Iprobe(source=i, tag=13):
-                numres = np.array(0, dtype='i')
-                workers.Recv([numres, MPI.INT], source=i, tag=13)
-
-                for it in range(numres):
-                    rnobs = np.array(0, dtype='i')
-                    workers.Recv([rnobs, MPI.INT], source=i, tag=21)
-                    labs = np.empty(rnobs, dtype='i')
-                    workers.Recv([labs, MPI.INT], source=i, tag=22)
-                    rgid = np.array(0, dtype='i')
-                    workers.Recv([rgid, MPI.INT], source=i, tag=23)
-                    labels[rgid] = labs
-                    if relabel:
-                        cZ = np.empty(rnobs, dtype='i')
-                        workers.Recv([cZ, MPI.INT], source=i, tag=24)
-                        Z[rgid] = cZ
-                res_devs.remove(i)
     return labels, Z 
 
 
