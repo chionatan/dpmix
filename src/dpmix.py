@@ -26,7 +26,7 @@ try:
     import pycuda
     import pycuda.driver
     try:
-        from multigpu import init_GPUWorkers, get_labelsGPU, kill_GPUWorkers
+        from multigpu_copy import init_GPUWorkers, get_labelsGPU, kill_GPUWorkers
         _has_gpu = True
     except (ImportError, pycuda.driver.RuntimeError):
         _has_gpu = False
@@ -74,6 +74,11 @@ class DPNormalMixture(object):
                  nu0=None, Phi0=None, e0=10, f0=1,
                  mu0=None, Sigma0=None, weights0=None, alpha0=1,
                  gpu=None, parallel=True, verbose=False):
+
+        # regardless of data class or _has_gpu, initialze gpu data to None
+        # this gets set in sample method if a gpu device is available
+        self.gpu_data = None
+
         if issubclass(type(data), DPNormalMixture):
             self.data = data.data
             self.nobs, self.ndim = self.data.shape
@@ -193,7 +198,7 @@ class DPNormalMixture(object):
         self._nu0 = nu0  # prior degrees of freedom
         self._Phi0 = Phi0  # prior location for Sigma_j's
 
-    def sample(self, niter=1000, nburn=0, thin=1, ident=False, callback=None):
+    def sample(self, niter=1000, nburn=0, thin=1, ident=False, device=None, callback=None):
         """
         samples niter + nburn iterations only storing the last niter
         draws thinned as indicated.
@@ -211,9 +216,9 @@ class DPNormalMixture(object):
 
         self._setup_storage(niter)
 
-        # create workers
+        # if a gpu is available, send data to device & save gpu_data
         if self.gpu:
-            self.gpu_workers = init_GPUWorkers(self.data, self.dev_list)
+            self.gpu_data = init_GPUWorkers(self.data, device)
 
         alpha = self._alpha0
         weights = self._weights0
@@ -268,10 +273,6 @@ class DPNormalMixture(object):
                 self.mu[i] = mu
                 self.Sigma[i] = Sigma
 
-        # clean up workers
-        if self.gpu:
-            kill_GPUWorkers(self.gpu_workers)
-
     # so pylint won't complain so much
     # alpha hyperparameters
     e = f = 1
@@ -292,7 +293,7 @@ class DPNormalMixture(object):
     def _update_labels(self, mu, Sigma, weights, ident=False):
         if self.gpu:
             # GPU business happens?
-            return get_labelsGPU(self.gpu_workers, weights, mu, Sigma, relabel=ident)
+            return get_labelsGPU(self.gpu_data, weights, mu, Sigma, relabel=ident)
         else:
             densities = mvn_weighted_logged(self.data, mu, Sigma, weights)
             if ident:
