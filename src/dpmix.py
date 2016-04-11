@@ -75,7 +75,7 @@ class DPNormalMixture(object):
                  mu0=None, Sigma0=None, weights0=None, alpha0=1,
                  gpu=None, parallel=True, verbose=False):
 
-        # regardless of data class or _has_gpu, initialze gpu data to None
+        # regardless of data class or _has_gpu, initialize gpu data to None
         # this gets set in sample method if a gpu device is available
         self.gpu_data = None
 
