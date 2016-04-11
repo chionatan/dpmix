@@ -12,11 +12,11 @@ from cyarma import include_dir as arma_dir
 from cyrand import include_dir as rng_dir
 
 setup(
-    name='dpmix',
+    name='dpmix_exp',
     version='0.5a',
-    packages=['dpmix'],
-    package_dir={'dpmix': 'src'},
-    description='Optimized (and GPU enhanced) fitting of Gaussian Mixture Models',
+    packages=['dpmix_exp'],
+    package_dir={'dpmix_exp': 'src'},
+    description='Optimized (& GPU enhanced) fitting of Gaussian Mixture Models',
     maintainer='Jacob Frelinger',
     maintainer_email='jacob.frelinger@duke.edu',
     author='Andrew Cron',
@@ -31,17 +31,17 @@ setup(
         'cyrand (>=0.2)',
         'mpi4py'
     ],
-    package_data={'dpmix': ['cufiles/*.cu']},
+    package_data={'dpmix_exp': ['cufiles/*.cu']},
     cmdclass={'build_ext': build_ext},
     ext_modules=[
         Extension(
-            "dpmix.munkres",
+            "dpmix_exp.munkres",
             ["src/munkres.pyx", "src/cpp/Munkres.cpp"],
             include_dirs=[get_include(), 'src/cpp', 'cpp/'],
             language='c++'
         ),
         Extension(
-            "dpmix.sampler",
+            "dpmix_exp.sampler",
             ["src/sampler_utils.pyx"],
             include_dirs=[
                 get_include(),
