@@ -86,7 +86,7 @@ class HDPNormalMixture(DPNormalMixture):
             self.nobs = tuple([d.shape[0] for d in self.data])
 
             # need for ident code
-            self.cumobs = np.zeros(self.ngroups+1)
+            self.cumobs = np.zeros(self.ngroups+1, dtype=np.uint32)
             self.cumobs[1:] = np.asarray(self.nobs).cumsum()
             self.ncomp = ncomp
 

@@ -320,11 +320,12 @@ class DPNormalMixture(object):
                 import pdb
                 pdb.set_trace()
 
+            # sample_mu_Sigma expects cumobs to be floats
             ct = sampler.sample_mu_Sigma(
                 mu, Sigma, all_labels, data,
                 self.gamma[0], self.mu_prior_mean,
                 self._nu0, self._Phi0[0], self.parallel,
-                self.cumobs[1:]
+                self.cumobs[1:].astype(np.float64)
             )
             
         else:
