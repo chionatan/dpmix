@@ -13,7 +13,7 @@ try:
     import pycuda
     import pycuda.driver
     try:
-        from multigpu_copy import init_GPUWorkers, get_expected_labels_GPU
+        from multigpu import init_GPUWorkers, get_expected_labels_GPU
         _has_gpu = True
     except (ImportError, pycuda.driver.RuntimeError):
         _has_gpu = False
