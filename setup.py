@@ -28,8 +28,7 @@ setup(
         'matplotlib (>=1.0)',
         'cython (>=0.17)',
         'cyarma (==0.2)',
-        'cyrand (>=0.2)',
-        'mpi4py'
+        'cyrand (>=0.2)'
     ],
     package_data={'dpmix_exp': ['cufiles/*.cu']},
     cmdclass={'build_ext': build_ext},
