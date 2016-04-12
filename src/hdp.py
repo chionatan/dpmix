@@ -72,44 +72,13 @@ class HDPNormalMixture(DPNormalMixture):
     def __init__(self, data, ncomp=256, gamma0=10, m0=None,
                  nu0=None, Phi0=None, e0=5, f0=0.1, g0=0.1, h0=0.1,
                  mu0=None, Sigma0=None, weights0=None, alpha0=1,
-                 gpu=None, parallel=False, verbose=False):
+                 parallel=False, verbose=False):
 
         # regardless of data class or _has_gpu, initialize gpu data to None
         # this gets set in sample method if a gpu device is available
         self.gpu_data = None
 
         if not issubclass(type(data), HDPNormalMixture):
-            # check for functioning gpu
-            if _has_gpu:
-                import os
-                self.dev_list = np.asarray(0, dtype=np.int)
-                self.dev_list.shape = 1
-                self.dev_list = {os.uname()[1]: self.dev_list}
-                if gpu is not None:
-                    if type(gpu) is bool:
-                        self.gpu = gpu
-                    elif type(gpu) is dict:
-                        self.gpu = True
-                        self.dev_list = gpu.copy()
-                        for host in self.dev_list:
-                            self.dev_list[host] = np.asarray(
-                                self.dev_list[host],
-                                dtype=np.int)
-                            if self.dev_list[host].shape == ():
-                                self.dev_list[host].shape = 1
-
-                    else:
-                        self.gpu = True
-                        self.dev_list = np.asarray(np.abs(gpu), dtype=np.int)
-                        if self.dev_list.shape == ():
-                            self.dev_list.shape = 1
-                        self.dev_list = np.unique(self.dev_list)
-                        self.dev_list = {os.uname()[1]: self.dev_list}
-                else:
-                    self.gpu = True
-            else:
-                self.gpu = False
-
             self.parallel = parallel
 
             # get the data .. should add checks here later
@@ -177,9 +146,6 @@ class HDPNormalMixture(DPNormalMixture):
             self._mu0 = data.mu[-1].copy()
             self._Sigma0 = data.Sigma[-1].copy()
             self.prop_scale = data.prop_scale.copy()
-            self.gpu = data.gpu
-            if self.gpu:
-                self.dev_list = data.dev_list
             self.parallel = data.parallel
 
         self.AR = np.zeros(self.ncomp)
@@ -223,15 +189,14 @@ class HDPNormalMixture(DPNormalMixture):
         -------
         None
         """
-        if self.verbose:
-            if self.gpu:
-                print "starting GPU enabled MCMC"
-            else:
-                print "starting MCMC"
-
-        # if a gpu is available, send data to device & save gpu_data
-        if self.gpu:
+        if _has_gpu and device is not None:
+            # if a gpu is available, send data to device & save gpu_data
             self.gpu_data = init_GPUWorkers(self.data, device)
+            if self.verbose:
+                print "starting GPU enabled MCMC"
+        else:
+            if self.verbose:
+                print "starting MCMC"
 
         self._ident = ident
         self._setup_storage(niter, thin)
@@ -320,7 +285,7 @@ class HDPNormalMixture(DPNormalMixture):
     def _update_labels(self, mu, sigma, weights):
         # gets the latent classifications
         z_hat = []
-        if self.gpu:
+        if self.gpu_data is not None:
             return get_hdp_labels_GPU(
                 self.gpu_data,
                 weights,
