@@ -107,67 +107,22 @@ def get_labelsGPU(gpu_data, w, mu, Sigma, relabel=False):
     return labels, Z
 
 
-def get_expected_labels_GPU(workers, w, mu, Sigma):
-    # run all the threads
-    ndev = workers.remote_group.size
-    ncomp = len(w)
-    ndim = Sigma.shape[1]
-    nobs, i = 0, 0
-    partitions = [0]
+def get_expected_labels_GPU(gpu_data, w, mu, Sigma):
+    densities = gpustats.mvnpdf_multi(
+        gpu_data[0],
+        mu,
+        Sigma,
+        weights=w.flatten(),
+        get=False,
+        logged=True,
+        order='C'
+    )
 
-    for i in xrange(ndev):
-        # give new params
-        task = np.array(1, dtype='i')
-        workers.Isend([task, MPI.INT], dest=i, tag=11)
-        numtasks = np.array(1, dtype='i')
-        workers.Send([numtasks, MPI.INT], dest=i, tag=12)
-        params = np.array([0, len(w), 0], dtype='i')
-        workers.Send([params, MPI.INT], dest=i, tag=13)
+    dens = np.asarray(densities.get(), dtype='d')
 
-        # give bigger params
-        workers.Send([np.asarray(w, dtype='d'), MPI.DOUBLE], dest=i, tag=21)
-        workers.Send([np.asarray(mu, dtype='d'), MPI.DOUBLE], dest=i, tag=22)
-        workers.Send([np.asarray(Sigma, dtype='d'), MPI.DOUBLE], dest=i, tag=23)
-
-    # gather results
-    xbars = []
-    densities = []
-    cts = []
-    ll = 0
-
-    for i in xrange(ndev):
-        numres = np.array(0, dtype='i')
-        workers.Recv(numres, source=i, tag=13)
-        rnobs = np.array(0, dtype='i')
-        workers.Recv(rnobs, source=i, tag=21)
-
-        nobs += rnobs
-        partitions.append(nobs)
-        ct = np.empty(ncomp, dtype='d')
-        workers.Recv([ct, MPI.DOUBLE], source=i, tag=22)
-        cts.append(ct)
-        xbar = np.empty(ncomp*ndim, dtype='d')
-        workers.Recv([xbar, MPI.DOUBLE], source=i, tag=23)
-        xbars.append(xbar.reshape(ncomp, ndim))
-        dens = np.empty(rnobs*ncomp, dtype='d')
-        workers.Recv([dens, MPI.DOUBLE], source=i, tag=24)
-        densities.append(dens.reshape(rnobs, ncomp))
-        nll = np.array(0, dtype='d')
-        workers.Recv([nll, MPI.DOUBLE], source=i, tag=25)
-        ll += nll
-        gid = np.array(0, dtype='i')
-        workers.Recv([gid, MPI.INT], source=i, tag=26)
-
-    dens = np.zeros((nobs, ncomp), dtype='d')
-    xbar = np.zeros((ncomp, ndim), dtype='d')
-    ct = np.zeros(ncomp, dtype='d')
-
-    for i in xrange(ndev):
-        ct += cts[i]
-        xbar += xbars[i]
-        dens[partitions[i]:partitions[i+1], :] = densities[i]
+    densities.gpudata.free()
         
-    return ll, ct, xbar, dens
+    return dens
 
 
 def kill_GPUWorkers(workers):

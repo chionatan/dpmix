@@ -13,9 +13,7 @@ try:
     import pycuda
     import pycuda.driver
     try:
-        from multigpu import init_GPUWorkers, get_expected_labels_GPU, \
-            kill_GPUWorkers
-        
+        from multigpu_copy import init_GPUWorkers, get_expected_labels_GPU
         _has_gpu = True
     except (ImportError, pycuda.driver.RuntimeError):
         _has_gpu = False
@@ -74,7 +72,7 @@ class BEM_DPNormalMixture(DPNormalMixture):
         self.e_labels = np.tile(self.weights.flatten(), (self.nobs, 1))
         self.densities = None
 
-    def optimize(self, maxiter=1000, perdiff=0.1):
+    def optimize(self, maxiter=1000, perdiff=0.1, device=None):
         """
         Optimizes the posterior distribution given the data. The
         algorithm terminates when either the maximum number of
@@ -84,7 +82,7 @@ class BEM_DPNormalMixture(DPNormalMixture):
 
         # start threads
         if self.gpu:
-            self.gpu_workers = init_GPUWorkers(self.data, self.dev_list)                
+            self.gpu_data = init_GPUWorkers(self.data, device)
 
         self.expected_labels()
         ll_2 = self.log_posterior()
@@ -108,8 +106,6 @@ class BEM_DPNormalMixture(DPNormalMixture):
             self.expected_labels()
             ll_1 = ll_2
             ll_2 = self.log_posterior()
-        if self.gpu:
-            kill_GPUWorkers(self.gpu_workers)
                 
     def log_posterior(self):
         # just the log likelihood right now because im lazy ... 
@@ -117,8 +113,20 @@ class BEM_DPNormalMixture(DPNormalMixture):
 
     def expected_labels(self):
         if self.gpu:
-            self.ll, self.ct, self.xbar, self.densities = get_expected_labels_GPU(
-                self.gpu_workers, self.weights, self.mu, self.Sigma)
+            densities = get_expected_labels_GPU(
+                self.gpu_data, self.weights, self.mu, self.Sigma)
+
+            densities = np.exp(densities)
+            norm = densities.sum(1)
+            self.ll = np.sum(np.log(norm))
+            densities = (densities.T / norm).T
+
+            self.ct = np.asarray(densities.sum(0), dtype='d')
+            self.xbar = np.asarray(
+                np.dot(densities.T, self.data),
+                dtype='d'
+            )
+            self.densities = densities.copy('C')
 
         else:
             densities = mvn_weighted_logged(
