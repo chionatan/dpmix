@@ -175,7 +175,15 @@ class DPNormalMixture(object):
         self._nu0 = nu0  # prior degrees of freedom
         self._Phi0 = Phi0  # prior location for Sigma_j's
 
-    def sample(self, niter=1000, nburn=0, thin=1, ident=False, device=None, callback=None):
+    def sample(
+            self,
+            niter=1000,
+            nburn=0,
+            thin=1,
+            ident=False,
+            device=None,
+            callback=None
+    ):
         """
         samples niter + nburn iterations only storing the last niter
         draws thinned as indicated.
@@ -184,6 +192,19 @@ class DPNormalMixture(object):
         used matching to the INITIAL VALUES. These should be selected
         with great care. We recommend using the EM algorithm. Also
         .. burning doesn't make much sense in this case.
+
+        Parameters
+        ----------
+        niter
+        nburn
+        thin
+        ident
+        device
+        callback
+
+        Returns
+        -------
+        None
         """
 
         if _has_gpu and device is not None:
