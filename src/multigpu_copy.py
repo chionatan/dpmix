@@ -2,9 +2,7 @@
 Written by: Andrew Cron
 """
 
-from mpi4py import MPI
 import numpy as np
-from utils import MCMC_Task
 import gpustats
 import gpustats.util as gpu_util
 import gpustats.sampler as gpu_sampler
