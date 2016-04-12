@@ -13,7 +13,7 @@ from utils import mvn_weighted_logged, sample_discrete, stick_break_proc
 
 from wishart import invwishartrand_prec
 
-# noinspection PyUnresolvedReferences
+# noinspection PyUnresolvedReferences, PyPackageRequirements
 import sampler
 
 try:
@@ -24,8 +24,11 @@ except ImportError:
 
 # check for GPU compatibility
 try:
+    # noinspection PyPackageRequirements
     import pycuda
+    # noinspection PyPackageRequirements
     import pycuda.driver
+    # noinspection PyUnresolvedReferences
     try:
         from utils_gpu import init_GPUWorkers, get_labelsGPU
         _has_gpu = True
@@ -209,22 +212,22 @@ class DPNormalMixture(object):
         with great care. We recommend using the EM algorithm. Also
         .. burning doesn't make much sense in this case.
         """
-        if self.verbose:
-            if self.gpu:
+
+        if _has_gpu and device is not None:
+            # if a gpu is available, send data to device & save gpu_data
+            self.gpu_data = init_GPUWorkers(self.data, device)
+            if self.verbose:
                 print "starting GPU enabled MCMC"
-            else:
+        else:
+            if self.verbose:
                 print "starting MCMC"
 
         self._setup_storage(niter)
 
-        # if a gpu is available, send data to device & save gpu_data
-        if self.gpu:
-            self.gpu_data = init_GPUWorkers(self.data, device)
-
         alpha = self._alpha0
         weights = self._weights0
         mu = self._mu0
-        Sigma = self._Sigma0
+        sigma = self._Sigma0
 
         for i in range(-nburn, niter):
             if isinstance(self.verbose, int) and self.verbose and \
@@ -236,17 +239,17 @@ class DPNormalMixture(object):
                 callback(i)
 
             # update labels
-            labels, zhat = self._update_labels(mu, Sigma, weights, ident)
+            labels, z_hat = self._update_labels(mu, sigma, weights, ident)
 
             # get initial reference if needed
             if i == 0 and ident:
-                zref = zhat.copy()
+                z_ref = z_hat.copy()
                 c0 = np.zeros((self.ncomp, self.ncomp), dtype=np.double)
                 for j in xrange(self.ncomp):
-                    c0[j, :] = np.sum(zref == j)
+                    c0[j, :] = np.sum(z_ref == j)
 
             # update mu and sigma
-            counts = self._update_mu_Sigma(mu, Sigma, labels)
+            counts = self._update_mu_Sigma(mu, sigma, labels)
 
             # update weights
             stick_weights, weights = self._update_stick_weights(counts, alpha)
@@ -256,32 +259,18 @@ class DPNormalMixture(object):
             # relabel if needed:
             if i > 0 and ident:
                 cost = c0.copy()
-                try:
-                    _get_cost(zref, zhat, cost)  # cython!!
-                except IndexError:
-                    print 'Something stranged happened ... do zref and zhat look correct?'
-                    import pdb
-                    pdb.set_trace()
+                _get_cost(z_ref, z_hat, cost)
 
                 _, iii = np.where(munkres(cost))
                 weights = weights[iii]
                 mu = mu[iii]
-                Sigma = Sigma[iii]
+                sigma = sigma[iii]
 
             if i >= 0:
                 self.weights[i] = weights
                 self.alpha[i] = alpha
                 self.mu[i] = mu
-                self.Sigma[i] = Sigma
-
-    # so pylint won't complain so much
-    # alpha hyper-parameters
-    e = f = 1
-    weights = None
-    mu = None
-    Sigma = None
-    alpha = None
-    stick_weights = None
+                self.Sigma[i] = sigma
 
     def _setup_storage(self, niter=1000, thin=1):
         n_results = niter // thin

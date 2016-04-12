@@ -10,8 +10,11 @@ from dpmix import DPNormalMixture
 
 # check for GPU compatibility
 try:
+    # noinspection PyPackageRequirements
     import pycuda
+    # noinspection PyPackageRequirements
     import pycuda.driver
+    # noinspection PyUnresolvedReferences
     try:
         from utils_gpu import init_GPUWorkers, get_expected_labels_GPU
         _has_gpu = True
@@ -94,13 +97,10 @@ class BEM_DPNormalMixture(DPNormalMixture):
             else:
                 print "starting BEM"
         while np.abs(ll_1 - ll_2) > 0.01*perdiff and it < maxiter:
-            if isinstance(self.verbose, int) and self.verbose and not isinstance(self.verbose, bool):
-                if it % self.verbose == 0:
-                    print "%d:, %f" % (it, ll_2)
             it += 1
 
             self.maximize_mu()
-            self.maximize_Sigma()
+            self.maximize_sigma()
             self.maximize_weights()
             self.expected_alpha()
             self.expected_labels()
@@ -149,22 +149,21 @@ class BEM_DPNormalMixture(DPNormalMixture):
         k, p = self.ncomp, self.ndim
         self.mu = \
             (
-                np.tile(self.mu_prior_mean, (k, 1))
-                +
+                np.tile(self.mu_prior_mean, (k, 1)) +
                 np.tile(self.gamma.reshape(k, 1), (1, p)) * self.xbar
             ) / np.tile((1. + self.gamma * self.ct).reshape(k, 1), (1, p))
 
-    def maximize_Sigma(self):
+    def maximize_sigma(self):
         for j in xrange(self.ncomp):
             if self.ct[j] > 0.1:
-                Xj_d = (self.data - self.xbar[j, :]/self.ct[j])
-                SS = np.dot(Xj_d.T * self.densities[:, j].flatten(), Xj_d)
-                SS += self._Phi0[j] + \
+                xj_d = (self.data - self.xbar[j, :]/self.ct[j])
+                ss = np.dot(xj_d.T * self.densities[:, j].flatten(), xj_d)
+                ss += self._Phi0[j] + \
                     (self.ct[j] / (1+self.gamma[j] * self.ct[j])) * np.outer(
                         (1/self.ct[j]) * self.xbar[j, :] - self.mu_prior_mean,
                         (1/self.ct[j]) * self.xbar[j, :] - self.mu_prior_mean
                     )
-                self.Sigma[j] = SS / self.ct[j]
+                self.Sigma[j] = ss / self.ct[j]
 
     def maximize_weights(self):
         self.stick_weights = np.minimum(
@@ -177,12 +176,12 @@ class BEM_DPNormalMixture(DPNormalMixture):
         )
         self.stick_weights[-1] = 1.
 
-        V = self.stick_weights[:-1]
+        v = self.stick_weights[:-1]
         pi = self.weights
         
-        pi[0] = V[0]
-        prod = (1 - V[0])
-        for k in xrange(1, len(V)):
-            pi[k] = prod * V[k]
-            prod *= 1 - V[k]
+        pi[0] = v[0]
+        prod = (1 - v[0])
+        for k in xrange(1, len(v)):
+            pi[k] = prod * v[k]
+            prod *= 1 - v[k]
         pi[-1] = prod
