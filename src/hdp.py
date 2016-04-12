@@ -10,10 +10,8 @@ from dpmix import DPNormalMixture
 # noinspection PyUnresolvedReferences, PyPackageRequirements
 import sampler
 
-try:
-    from munkres import munkres, get_cost
-except ImportError:
-    _has_munkres = False
+from munkres import munkres, get_cost
+
 
 # check for GPU compatibility
 try:

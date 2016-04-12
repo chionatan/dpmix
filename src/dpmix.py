@@ -16,10 +16,7 @@ from wishart import invwishartrand_prec
 # noinspection PyUnresolvedReferences, PyPackageRequirements
 import sampler
 
-try:
-    from munkres import munkres, get_cost
-except ImportError:
-    _has_munkres = False
+from munkres import munkres, get_cost
     
 
 # check for GPU compatibility
