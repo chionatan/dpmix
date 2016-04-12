@@ -123,12 +123,3 @@ def get_expected_labels_GPU(gpu_data, w, mu, Sigma):
     densities.gpudata.free()
         
     return dens
-
-
-def kill_GPUWorkers(workers):
-    # poison pill to each child
-    ndev = workers.remote_group.size
-    msg = np.array(-1, dtype='i')
-    for i in xrange(ndev):
-        workers.Isend([msg, MPI.INT], dest=i, tag=11)
-    workers.Disconnect()
