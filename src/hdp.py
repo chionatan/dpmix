@@ -7,7 +7,7 @@ from utils import mvn_weighted_logged, sample_discrete, stick_break_proc
 from utils import break_sticks
 from dpmix import DPNormalMixture
 
-# noinspection PyUnresolvedReferences
+# noinspection PyUnresolvedReferences, PyPackageRequirements
 import sampler
 
 try:
@@ -17,28 +17,29 @@ except ImportError:
 
 # check for GPU compatibility
 try:
+    # noinspection PyPackageRequirements
     import pycuda
+    # noinspection PyPackageRequirements
     import pycuda.driver
+    # noinspection PyUnresolvedReferences
     try:
         from utils_gpu import init_GPUWorkers, get_hdp_labels_GPU
         _has_gpu = True
-    except (ImportError, pycuda._driver.RuntimeError):
+    except (ImportError, pycuda.driver.RuntimeError):
         _has_gpu = False
 except ImportError:
     _has_gpu = False
 
 
-# func to get lpost for beta
+# function to get log_post for beta
 def beta_post(stick_beta, beta, stick_weights, alpha0, alpha):
-    J = stick_weights.shape[0]
-    k = stick_weights.shape[1]
-    lpost = 0
+    log_post = 0
 
     a, b = alpha0*beta[:-1], alpha0*(1-beta[:-1].cumsum())
-    lpost += np.sum(stats.beta.logpdf(stick_weights, a, b))
+    log_post += np.sum(stats.beta.logpdf(stick_weights, a, b))
 
-    lpost += np.sum(stats.beta.logpdf(stick_beta, 1, alpha))
-    return lpost
+    log_post += np.sum(stats.beta.logpdf(stick_beta, 1, alpha))
+    return log_post
 
 
 class HDPNormalMixture(DPNormalMixture):
@@ -62,10 +63,6 @@ class HDPNormalMixture(DPNormalMixture):
     \alpha_0 ~ Ga(g, h)
     \mu_k ~ N(0, m\Sigma_k)
     \Sigma_j ~ IW(nu0+2, nu0*Phi_k)
-
-    Citation
-    --------
-    **Coming Soon**
 
     Returns
     -------
@@ -191,7 +188,8 @@ class HDPNormalMixture(DPNormalMixture):
         # data working var
         self.alldata = np.empty((sum(self.nobs), self.ndim), dtype=np.double)
         for i in xrange(self.ngroups):
-            self.alldata[self.cumobs[i]:self.cumobs[i+1], :] = self.data[i].copy()
+            self.alldata[self.cumobs[i]:self.cumobs[i+1], :] = \
+                self.data[i].copy()
 
     def sample(
             self,
@@ -204,12 +202,26 @@ class HDPNormalMixture(DPNormalMixture):
             callback=None
     ):
         """
-        Performs MCMC sampling of the posterior. \beta must be sampled
+        Performs MCMC sampling of the posterior. beta must be sampled
         using Metropolis Hastings and its proposal distribution will
         be tuned every tune_interval iterations during the burnin
         period. It is suggested that an ample burnin is used and the
         AR parameters stores the acceptance rate for the stick weights
-        of \beta and \alpha_0.
+        of beta and alpha_0.
+
+        Parameters
+        ----------
+        niter
+        nburn
+        thin
+        tune_interval
+        ident
+        device
+        callback
+
+        Returns
+        -------
+        None
         """
         if self.verbose:
             if self.gpu:
@@ -231,7 +243,7 @@ class HDPNormalMixture(DPNormalMixture):
         beta = self._beta0
         stick_beta = self._stick_beta0
         mu = self._mu0
-        Sigma = self._Sigma0
+        sigma = self._Sigma0
 
         for i in range(-nburn, niter):
             if isinstance(self.verbose, int) and self.verbose and \
@@ -243,20 +255,20 @@ class HDPNormalMixture(DPNormalMixture):
                 callback(i)
 
             # update labels
-            labels, zhat = self._update_labels(mu, Sigma, weights)
+            labels, z_hat = self._update_labels(mu, sigma, weights)
 
             # Get initial reference if needed
             if i == 0 and ident:
-                zref = []
+                z_ref = []
                 for ii in xrange(self.ngroups):
-                    zref.append(zhat[ii].copy())
+                    z_ref.append(z_hat[ii].copy())
                 c0 = np.zeros((self.ncomp, self.ncomp), dtype=np.double)
                 for j in xrange(self.ncomp):
                     for ii in xrange(self.ngroups):
-                        c0[j, :] += np.sum(zref[ii] == j)
+                        c0[j, :] += np.sum(z_ref[ii] == j)
 
             # update mu and sigma
-            counts = self._update_mu_Sigma(mu, Sigma, labels, self.alldata)
+            counts = self._update_mu_Sigma(mu, sigma, labels, self.alldata)
 
             # update weights, masks
             stick_weights, weights = self._update_stick_weights(
@@ -268,7 +280,7 @@ class HDPNormalMixture(DPNormalMixture):
                 stick_beta, beta, stick_weights, alpha0,
                 alpha, self.AR, self.prop_scale, self.parallel
             )
-            # hyper parameters
+            # hyper-parameters
             alpha = self._update_alpha(stick_beta)
             alpha0 = sampler.sample_alpha0(stick_weights, beta, alpha0,
                                            self.e0, self.f0,
@@ -277,13 +289,13 @@ class HDPNormalMixture(DPNormalMixture):
             # Relabel
             if i > 0 and ident:
                 cost = c0.copy()
-                for Z, Zr in zip(zhat, zref):
+                for Z, Zr in zip(z_hat, z_ref):
                     _get_cost(Zr, Z, cost)
                 _, iii = np.where(munkres(cost))
                 beta = beta[iii]
                 weights = weights[:, iii]
                 mu = mu[iii]
-                Sigma = Sigma[iii]
+                sigma = sigma[iii]
             # save
             if i >= 0:
                 self.beta[i] = beta
@@ -291,35 +303,45 @@ class HDPNormalMixture(DPNormalMixture):
                 self.alpha[i] = alpha
                 self.alpha0[i] = alpha0
                 self.mu[i] = mu
-                self.Sigma[i] = Sigma
+                self.Sigma[i] = sigma
             elif (nburn+i+1) % self._tune_interval == 0:
                 self._tune()
         self.stick_beta = stick_beta.copy()
 
     def _setup_storage(self, niter=1000, thin=1):
-        nresults = niter // thin
-        self.weights = np.zeros((nresults, self.ngroups, self.ncomp))
-        self.beta = np.zeros((nresults, self.ncomp))
-        self.mu = np.zeros((nresults, self.ncomp, self.ndim))
-        self.Sigma = np.zeros((nresults, self.ncomp, self.ndim, self.ndim))
-        self.alpha = np.zeros(nresults)
-        self.alpha0 = np.zeros(nresults)
+        n_results = niter // thin
+        self.weights = np.zeros((n_results, self.ngroups, self.ncomp))
+        self.beta = np.zeros((n_results, self.ncomp))
+        self.mu = np.zeros((n_results, self.ncomp, self.ndim))
+        self.Sigma = np.zeros((n_results, self.ncomp, self.ndim, self.ndim))
+        self.alpha = np.zeros(n_results)
+        self.alpha0 = np.zeros(n_results)
 
-    def _update_labels(self, mu, Sigma, weights):
+    def _update_labels(self, mu, sigma, weights):
         # gets the latent classifications
-        zhat = []
+        z_hat = []
         if self.gpu:
-            return get_hdp_labels_GPU(self.gpu_data, weights, mu, Sigma, self._ident)
-
+            return get_hdp_labels_GPU(
+                self.gpu_data,
+                weights,
+                mu,
+                sigma,
+                self._ident
+            )
         else:
             labels = [np.zeros(self.nobs[j]) for j in range(self.ngroups)]
             for j in xrange(self.ngroups):
-                densities = mvn_weighted_logged(self.data[j], mu, Sigma, weights[j])
+                densities = mvn_weighted_logged(
+                    self.data[j],
+                    mu,
+                    sigma,
+                    weights[j]
+                )
                 labels[j] = sample_discrete(densities).squeeze()
                 if self._ident:
-                    zhat.append(np.asarray(densities.argmax(1), dtype='i'))
+                    z_hat.append(np.asarray(densities.argmax(1), dtype='i'))
 
-        return labels, zhat
+        return labels, z_hat
 
     def _update_stick_weights(self, counts, beta, alpha0):
         new_weights = np.zeros((self.ngroups, self.ncomp))
@@ -327,20 +349,25 @@ class HDPNormalMixture(DPNormalMixture):
         for j in xrange(self.ngroups):
             reverse_cumsum = counts[j][::-1].cumsum()[::-1]
 
-            a = alpha0*beta[:-1] + counts[j][:-1]
-            b = alpha0*(1-beta[:-1].cumsum()) + reverse_cumsum[1:]
-            sticksj, weightsj = stick_break_proc(a, b)
-            new_weights[j] = weightsj
-            new_stick_weights[j] = sticksj
+            a = alpha0 * beta[:-1] + counts[j][:-1]
+            b = alpha0 * (1 - beta[:-1].cumsum()) + reverse_cumsum[1:]
+            sticks_j, weights_j = stick_break_proc(a, b)
+            new_weights[j] = weights_j
+            new_stick_weights[j] = sticks_j
         return new_stick_weights, new_weights
 
     def _update_beta(self, stick_beta, beta, stick_weights, alpha0, alpha):
 
         old_stick_beta = stick_beta.copy()
-        old_beta = beta.copy()
         for k in xrange(self.ncomp-1):
-            # get initial logpost
-            lpost = beta_post(stick_beta, beta, stick_weights, float(alpha0), float(alpha))
+            # get initial log post
+            log_post = beta_post(
+                stick_beta,
+                beta,
+                stick_weights,
+                float(alpha0),
+                float(alpha)
+            )
 
             # sample new beta from reflected normal
             prop = stats.norm.rvs(stick_beta[k], self.prop_scale[k])
@@ -353,10 +380,16 @@ class HDPNormalMixture(DPNormalMixture):
             beta = break_sticks(stick_beta)
 
             # get new posterior
-            lpost_new = beta_post(stick_beta, beta, stick_weights, float(alpha0), float(alpha))
+            log_post_new = beta_post(
+                stick_beta,
+                beta,
+                stick_weights,
+                float(alpha0),
+                float(alpha)
+            )
 
             # accept or reject
-            if stats.expon.rvs() > lpost - lpost_new:
+            if stats.expon.rvs() > log_post - log_post_new:
                 # accept
                 self.AR[k] += 1
             else:
