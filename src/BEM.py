@@ -59,14 +59,14 @@ class BEM_DPNormalMixture(DPNormalMixture):
     def __init__(self, data, ncomp=256, gamma0=100, m0=None,
                  nu0=None, Phi0=None, e0=10, f0=1,
                  mu0=None, Sigma0=None, weights0=None, alpha0=1,
-                 gpu=None, parallel=True, verbose=False):
+                 parallel=True, verbose=False):
 
         parallel = False  # Need to cythonize ....
 
         # for now, initialization is exactly the same ....
         super(BEM_DPNormalMixture, self).__init__(
             data, ncomp, gamma0, m0, nu0, Phi0, e0, f0,
-            mu0, Sigma0, weights0, alpha0, gpu, parallel,  verbose)
+            mu0, Sigma0, weights0, alpha0, parallel, verbose)
         self.alpha = self._alpha0
         self.weights = self._weights0.copy()
         self.stick_weights = self.weights.copy()
@@ -82,20 +82,19 @@ class BEM_DPNormalMixture(DPNormalMixture):
         iterations is reached or the percent difference in the
         posterior is less than perdiff.
         """
-
-        # start threads
-        if self.gpu:
+        if _has_gpu and device is not None:
+            if self.verbose:
+                print "starting GPU enabled BEM"
             self.gpu_data = init_GPUWorkers(self.data, device)
+        else:
+            if self.verbose:
+                print "starting BEM"
 
         self.expected_labels()
         ll_2 = self.log_posterior()
         ll_1 = 1
         it = 0
-        if self.verbose:
-            if self.gpu:
-                print "starting GPU enabled BEM"
-            else:
-                print "starting BEM"
+
         while np.abs(ll_1 - ll_2) > 0.01*perdiff and it < maxiter:
             it += 1
 
@@ -112,9 +111,13 @@ class BEM_DPNormalMixture(DPNormalMixture):
         return self.ll
 
     def expected_labels(self):
-        if self.gpu:
+        if self.gpu_data is not None:
             densities = get_expected_labels_GPU(
-                self.gpu_data, self.weights, self.mu, self.Sigma)
+                self.gpu_data,
+                self.weights,
+                self.mu,
+                self.Sigma
+            )
 
             densities = np.exp(densities)
             norm = densities.sum(1)
@@ -130,7 +133,10 @@ class BEM_DPNormalMixture(DPNormalMixture):
 
         else:
             densities = mvn_weighted_logged(
-                self.data, self.mu, self.Sigma, self.weights
+                self.data,
+                self.mu,
+                self.Sigma,
+                self.weights
             )
             densities = np.exp(densities)
             norm = densities.sum(1)
@@ -141,7 +147,6 @@ class BEM_DPNormalMixture(DPNormalMixture):
             self.densities = densities
 
     def expected_alpha(self):
-        
         sm = np.sum(np.log(1. - self.stick_weights[:-1]))
         self.alpha = (self.ncomp + self.e - 1.) / (self.f - sm)
 
