@@ -11,7 +11,7 @@ from dpmix import DPNormalMixture
 import sampler
 
 try:
-    from munkres import munkres, _get_cost
+    from munkres import munkres, get_cost
 except ImportError:
     _has_munkres = False
 
@@ -255,7 +255,7 @@ class HDPNormalMixture(DPNormalMixture):
             if i > 0 and ident:
                 cost = c0.copy()
                 for Z, Zr in zip(z_hat, z_ref):
-                    _get_cost(Zr, Z, cost)
+                    get_cost(Zr, Z, cost)
                 _, iii = np.where(munkres(cost))
                 beta = beta[iii]
                 weights = weights[:, iii]

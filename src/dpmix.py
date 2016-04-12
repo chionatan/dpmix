@@ -17,7 +17,7 @@ from wishart import invwishartrand_prec
 import sampler
 
 try:
-    from munkres import munkres, _get_cost
+    from munkres import munkres, get_cost
 except ImportError:
     _has_munkres = False
     
@@ -253,7 +253,7 @@ class DPNormalMixture(object):
             # relabel if needed:
             if i > 0 and ident:
                 cost = c0.copy()
-                _get_cost(z_ref, z_hat, cost)
+                get_cost(z_ref, z_hat, cost)
 
                 _, iii = np.where(munkres(cost))
                 weights = weights[iii]
