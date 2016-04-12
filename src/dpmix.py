@@ -77,7 +77,7 @@ class DPNormalMixture(object):
     def __init__(self, data, ncomp=256, gamma0=10, m0=None,
                  nu0=None, Phi0=None, e0=10, f0=1,
                  mu0=None, Sigma0=None, weights0=None, alpha0=1,
-                 gpu=None, parallel=True, verbose=False):
+                 parallel=True, verbose=False):
 
         # regardless of data class or _has_gpu, initialize gpu data to None
         # this gets set in sample method if a gpu device is available
@@ -101,44 +101,8 @@ class DPNormalMixture(object):
             e0 = data.e
             f0 = data.f
             self.gamma = data.gamma
-            self.gpu = data.gpu
-            if self.gpu:
-                self.dev_list = data.dev_list
             self.parallel = data.parallel
         else:
-            if gpu and not _has_gpu:
-                print 'Warning: GPU load failed.'
-            if _has_gpu:
-                import os
-                self.dev_list = np.asarray(0, dtype=np.int)
-                self.dev_list.shape = 1
-                self.dev_list = {os.uname()[1]: self.dev_list}
-                if gpu is not None:
-                    if type(gpu) is bool:
-                        self.gpu = gpu
-                    elif type(gpu) is dict:
-                        self.gpu = True
-                        self.dev_list = gpu.copy()
-                        for host in self.dev_list:
-                            self.dev_list[host] = np.asarray(
-                                self.dev_list[host],
-                                dtype=np.int
-                            )
-                            if self.dev_list[host].shape == ():
-                                self.dev_list[host].shape = 1
-
-                    else:
-                        self.gpu = True
-                        self.dev_list = np.asarray(np.abs(gpu), dtype=np.int)
-                        if self.dev_list.shape == ():
-                            self.dev_list.shape = 1
-                        self.dev_list = np.unique(self.dev_list)
-                        self.dev_list = {os.uname()[1]: self.dev_list}
-                else:
-                    self.gpu = True
-            else:
-                self.gpu = False
-
             self.data = np.asarray(data)
             self.nobs, self.ndim = self.data.shape
             self.ncomp = ncomp
@@ -158,11 +122,20 @@ class DPNormalMixture(object):
                         
         self.verbose = verbose
 
-        self._set_initial_values(alpha0, nu0, Phi0, mu0, Sigma0,
-                                 weights0, e0, f0)
+        self._set_initial_values(
+            alpha0,
+            nu0,
+            Phi0,
+            mu0,
+            Sigma0,
+            weights0,
+            e0,
+            f0
+        )
 
         # Check data for non-contiguous crap
-        if not (self.data.flags["C_CONTIGUOUS"] or self.data.flags["F_CONTIGUOUS"]):
+        if not (self.data.flags["C_CONTIGUOUS"]
+                or self.data.flags["F_CONTIGUOUS"]):
             self.data = self.data.copy()
         
     def _set_initial_values(self, alpha0, nu0, Phi0, mu0, Sigma0, weights0,
@@ -281,9 +254,14 @@ class DPNormalMixture(object):
         self.alpha = np.zeros(n_results)
 
     def _update_labels(self, mu, Sigma, weights, ident=False):
-        if self.gpu:
-            # GPU business happens?
-            return get_labelsGPU(self.gpu_data, weights, mu, Sigma, relabel=ident)
+        if self.gpu_data is not None:
+            return get_labelsGPU(
+                self.gpu_data,
+                weights,
+                mu,
+                Sigma,
+                relabel=ident
+            )
         else:
             densities = mvn_weighted_logged(self.data, mu, Sigma, weights)
             if ident:
