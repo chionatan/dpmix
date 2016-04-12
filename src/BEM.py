@@ -8,12 +8,12 @@ import numpy as np
 from utils import mvn_weighted_logged
 from dpmix import DPNormalMixture
 
-# check for gpustats compatibility
+# check for GPU compatibility
 try:
     import pycuda
     import pycuda.driver
     try:
-        from multigpu import init_GPUWorkers, get_expected_labels_GPU
+        from utils_gpu import init_GPUWorkers, get_expected_labels_GPU
         _has_gpu = True
     except (ImportError, pycuda.driver.RuntimeError):
         _has_gpu = False

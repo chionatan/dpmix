@@ -7,6 +7,7 @@ from utils import mvn_weighted_logged, sample_discrete, stick_break_proc
 from utils import break_sticks
 from dpmix import DPNormalMixture
 
+# noinspection PyUnresolvedReferences
 import sampler
 
 try:
@@ -14,12 +15,12 @@ try:
 except ImportError:
     _has_munkres = False
 
-# check for gpustats compatibility
+# check for GPU compatibility
 try:
     import pycuda
     import pycuda.driver
     try:
-        from multigpu import init_GPUWorkers, get_hdp_labels_GPU
+        from utils_gpu import init_GPUWorkers, get_hdp_labels_GPU
         _has_gpu = True
     except (ImportError, pycuda._driver.RuntimeError):
         _has_gpu = False
@@ -301,7 +302,7 @@ class HDPNormalMixture(DPNormalMixture):
         self.alpha0 = np.zeros(nresults)
 
     def _update_labels(self, mu, Sigma, weights):
-        # gets the latent classifications .. easily done with current multigpu
+        # gets the latent classifications
         zhat = []
         if self.gpu:
             return get_hdp_labels_GPU(self.gpu_data, weights, mu, Sigma, self._ident)

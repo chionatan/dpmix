@@ -13,6 +13,7 @@ from utils import mvn_weighted_logged, sample_discrete, stick_break_proc
 
 from wishart import invwishartrand_prec
 
+# noinspection PyUnresolvedReferences
 import sampler
 
 try:
@@ -21,12 +22,12 @@ except ImportError:
     _has_munkres = False
     
 
-# check for gpustats compatibility
+# check for GPU compatibility
 try:
     import pycuda
     import pycuda.driver
     try:
-        from multigpu import init_GPUWorkers, get_labelsGPU
+        from utils_gpu import init_GPUWorkers, get_labelsGPU
         _has_gpu = True
     except (ImportError, pycuda.driver.RuntimeError):
         _has_gpu = False
