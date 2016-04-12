@@ -10,11 +10,6 @@ from pycuda.gpuarray import to_gpu
 import cuda_functions
 
 
-# Multi GPU
-_datadevmap = {}
-_dataind = {}
-
-
 def init_GPUWorkers(data, device_number):
     """
     Send data to GPU device
@@ -29,9 +24,6 @@ def init_GPUWorkers(data, device_number):
     else:  # HDP...one or more data sets per GPU
         for i in xrange(len(data)):
             gpu_data.append(to_gpu(np.asarray(data[i], dtype=np.float32)))
-
-            _dataind[i] = i  # not sure if this is correct
-            _datadevmap[i] = 0  # or this
 
     return gpu_data
 
