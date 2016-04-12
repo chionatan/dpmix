@@ -259,7 +259,11 @@ class HDPNormalMixture(DPNormalMixture):
             counts = self._update_mu_Sigma(mu, Sigma, labels, self.alldata)
 
             # update weights, masks
-            stick_weights, weights = self._update_stick_weights(counts, beta, alpha0)
+            stick_weights, weights = self._update_stick_weights(
+                counts,
+                beta,
+                alpha0
+            )
             stick_beta, beta = sampler.sample_beta(
                 stick_beta, beta, stick_weights, alpha0,
                 alpha, self.AR, self.prop_scale, self.parallel

@@ -140,7 +140,7 @@ class DPNormalMixture(object):
             self.nobs, self.ndim = self.data.shape
             self.ncomp = ncomp
 
-            # TODO hyperparameters
+            # TODO hyper-parameters
             # prior mean for component means
             if m0 is not None:
                 if len(m0) == self.ndim:
@@ -275,7 +275,7 @@ class DPNormalMixture(object):
                 self.Sigma[i] = Sigma
 
     # so pylint won't complain so much
-    # alpha hyperparameters
+    # alpha hyper-parameters
     e = f = 1
     weights = None
     mu = None
@@ -284,12 +284,12 @@ class DPNormalMixture(object):
     stick_weights = None
 
     def _setup_storage(self, niter=1000, thin=1):
-        nresults = niter // thin
+        n_results = niter // thin
 
-        self.weights = np.zeros((nresults, self.ncomp))
-        self.mu = np.zeros((nresults, self.ncomp, self.ndim))
-        self.Sigma = np.zeros((nresults, self.ncomp, self.ndim, self.ndim))
-        self.alpha = np.zeros(nresults)
+        self.weights = np.zeros((n_results, self.ncomp))
+        self.mu = np.zeros((n_results, self.ncomp, self.ndim))
+        self.Sigma = np.zeros((n_results, self.ncomp, self.ndim, self.ndim))
+        self.alpha = np.zeros(n_results)
 
     def _update_labels(self, mu, Sigma, weights, ident=False):
         if self.gpu:
