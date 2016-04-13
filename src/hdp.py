@@ -231,7 +231,7 @@ class HDPNormalMixture(DPNormalMixture):
                         c0[j, :] += np.sum(z_ref[ii] == j)
 
             # update mu and sigma
-            counts = self._update_mu_Sigma(mu, sigma, labels, self.alldata)
+            counts = self._update_mu_Sigma(mu, sigma, labels)
 
             # update weights, masks
             stick_weights, weights = self._update_stick_weights(
@@ -359,6 +359,32 @@ class HDPNormalMixture(DPNormalMixture):
                 stick_beta[k] = old_stick_beta[k]
                 beta = break_sticks(stick_beta)
         return stick_beta, beta
+
+    def _update_mu_sigma(self, mu, sigma, labels, other_dat=None):
+        all_labels = np.empty(self.cumobs[-1], dtype=np.int)
+        i = 0
+        for labs in labels:
+            all_labels[self.cumobs[i]:self.cumobs[i + 1]] = labs.copy()
+            i += 1
+        if len(mu.shape) == 1:
+            import pdb
+            pdb.set_trace()
+
+        # sample_mu_Sigma expects cumobs to be floats
+        counts = sampler.sample_mu_Sigma(
+            mu,
+            sigma,
+            all_labels,
+            self.alldata,  # using combined all_data here
+            self.gamma[0],
+            self.mu_prior_mean,
+            self._nu0,
+            self._Phi0[0],
+            self.parallel,
+            self.cumobs[1:].astype(np.float64)  # convert to floats
+        )
+
+        return counts
 
     def _tune(self):
         """

@@ -240,7 +240,7 @@ class DPNormalMixture(object):
                     c0[j, :] = np.sum(z_ref == j)
 
             # update mu and sigma
-            counts = self._update_mu_Sigma(mu, sigma, labels)
+            counts = self._update_mu_sigma(mu, sigma, labels)
 
             # update weights
             stick_weights, weights = self._update_stick_weights(counts, alpha)
@@ -302,36 +302,16 @@ class DPNormalMixture(object):
         b = self.f - np.log(1 - V).sum()
         return npr.gamma(a, scale=1 / b)
 
-    def _update_mu_Sigma(self, mu, Sigma, labels, other_dat=None):
-        is_hdp = isinstance(labels, list)
-
-        if other_dat is None:
-            data = self.data
-        else:
-            data = other_dat
-
-        if is_hdp:
-            all_labels = np.empty(self.cumobs[-1], dtype=np.int)
-            i = 0
-            for labs in labels:
-                all_labels[self.cumobs[i]:self.cumobs[i+1]] = labs.copy()
-                i += 1
-            if len(mu.shape) == 1:
-                import pdb
-                pdb.set_trace()
-
-            # sample_mu_Sigma expects cumobs to be floats
-            ct = sampler.sample_mu_Sigma(
-                mu, Sigma, all_labels, data,
-                self.gamma[0], self.mu_prior_mean,
-                self._nu0, self._Phi0[0], self.parallel,
-                self.cumobs[1:].astype(np.float64)
-            )
-            
-        else:
-            ct = sampler.sample_mu_Sigma(
-                mu, Sigma, np.asarray(labels, dtype=np.int), data,
-                self.gamma[0], self.mu_prior_mean,
-                self._nu0, self._Phi0[0], self.parallel
-            )
-        return ct
+    def _update_mu_sigma(self, mu, sigma, labels):
+        counts = sampler.sample_mu_Sigma(
+            mu,
+            sigma,
+            np.asarray(labels, dtype=np.int),
+            self.data,
+            self.gamma[0],
+            self.mu_prior_mean,
+            self._nu0,
+            self._Phi0[0],
+            self.parallel
+        )
+        return counts
