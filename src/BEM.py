@@ -77,7 +77,7 @@ class BEM_DPNormalMixture(DPNormalMixture):
         self.densities = None
         self.ll = None
         self.ct = None
-        self.xbar = None
+        self.x_bar = None
 
     def optimize(self, maxiter=1000, perdiff=0.1, device=None):
         """
@@ -129,7 +129,7 @@ class BEM_DPNormalMixture(DPNormalMixture):
             densities = (densities.T / norm).T
 
             self.ct = np.asarray(densities.sum(0), dtype='d')
-            self.xbar = np.asarray(
+            self.x_bar = np.asarray(
                 np.dot(densities.T, self.data),
                 dtype='d'
             )
@@ -147,7 +147,7 @@ class BEM_DPNormalMixture(DPNormalMixture):
             self.ll = np.sum(np.log(norm))
             densities = (densities.T / norm).T
             self.ct = densities.sum(0)
-            self.xbar = np.dot(densities.T, self.data)
+            self.x_bar = np.dot(densities.T, self.data)
             self.densities = densities
 
     def expected_alpha(self):
@@ -159,18 +159,18 @@ class BEM_DPNormalMixture(DPNormalMixture):
         self.mu = \
             (
                 np.tile(self.mu_prior_mean, (k, 1)) +
-                np.tile(self.gamma.reshape(k, 1), (1, p)) * self.xbar
+                np.tile(self.gamma.reshape(k, 1), (1, p)) * self.x_bar
             ) / np.tile((1. + self.gamma * self.ct).reshape(k, 1), (1, p))
 
     def maximize_sigma(self):
         for j in xrange(self.ncomp):
             if self.ct[j] > 0.1:
-                xj_d = (self.data - self.xbar[j, :]/self.ct[j])
+                xj_d = (self.data - self.x_bar[j, :] / self.ct[j])
                 ss = np.dot(xj_d.T * self.densities[:, j].flatten(), xj_d)
                 ss += self._Phi0[j] + \
                     (self.ct[j] / (1 + self.gamma[j] * self.ct[j])) * np.outer(
-                        (1/self.ct[j]) * self.xbar[j, :] - self.mu_prior_mean,
-                        (1/self.ct[j]) * self.xbar[j, :] - self.mu_prior_mean
+                        (1/self.ct[j]) * self.x_bar[j, :] - self.mu_prior_mean,
+                        (1/self.ct[j]) * self.x_bar[j, :] - self.mu_prior_mean
                     )
                 self.Sigma[j] = ss / self.ct[j]
 
