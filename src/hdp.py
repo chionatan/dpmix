@@ -196,12 +196,6 @@ class HDPNormalMixture(DPNormalMixture):
         sigma = self._Sigma0
 
         for i in range(-nburn, niter):
-            if isinstance(self.verbose, int) and \
-                    self.verbose and \
-                    not isinstance(self.verbose, bool):
-                if i % self.verbose == 0:
-                    print i
-
             if hasattr(callback, '__call__'):
                 callback(i)
 
