@@ -1,23 +1,15 @@
-"""
-Notes
------
-References
-Ishwaran & James (2001) Gibbs Sampling Methods for Stick-Breaking Priors
-"""
 from __future__ import division
 
 import numpy as np
 import numpy.random as npr
 
 from utils import mvn_weighted_logged, sample_discrete, stick_break_proc
-
 from wishart import invwishartrand_prec
+from munkres import munkres, get_cost
 
 # noinspection PyUnresolvedReferences, PyPackageRequirements
 import sampler
 
-from munkres import munkres, get_cost
-    
 
 # check for GPU compatibility
 try:
@@ -57,20 +49,19 @@ class DPNormalMixture(object):
     standardized data. However, a careful analysis should always
     include careful choosing of priors.
 
-    Citation
-    --------
+    Citations
+    ---------
+
+    Ishwaran and James.
+    'Gibbs Sampling Methods for Stick-Breaking Priors'
+    (2001)
     
-    M. Suchard, Q. Wang, C. Chan, J. Frelinger, A. Cron and
-    M. West. 'Understanding GPU programming for statistical
-    computation: Studies in massively parallel massive mixtures.'
-    Journal of Computational and Graphical Statistics. 19 (2010):
-    419-438
-
-    Returns
-    -------
-    **Attributes**
+    M. Suchard, Q. Wang, C. Chan, J. Frelinger, A. Cron and M. West.
+    'Understanding GPU programming for statistical computation:
+    Studies in massively parallel massive mixtures.'
+    Journal of Computational and Graphical Statistics.
+    19 (2010): 419-438
     """
-
     def __init__(self, data, ncomp=256, gamma0=10, m0=None,
                  nu0=None, Phi0=None, e0=10, f0=1,
                  mu0=None, Sigma0=None, weights0=None, alpha0=1,
@@ -290,16 +281,17 @@ class DPNormalMixture(object):
 
     def _update_stick_weights(self, counts, alpha):
 
-        reverse_cumsum = counts[::-1].cumsum()[::-1]
+        reverse_cum_sum = counts[::-1].cumsum()[::-1]
 
         a = 1 + counts[:-1]
-        b = alpha + reverse_cumsum[1:]
+        b = alpha + reverse_cum_sum[1:]
         stick_weights, mixture_weights = stick_break_proc(a, b)
         return stick_weights, mixture_weights
 
-    def _update_alpha(self, V):
+    def _update_alpha(self, v):
+        # is v the current stick weights?
         a = self.ncomp + self.e - 1
-        b = self.f - np.log(1 - V).sum()
+        b = self.f - np.log(1 - v).sum()
         return npr.gamma(a, scale=1 / b)
 
     def _update_mu_sigma(self, mu, sigma, labels):

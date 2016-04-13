@@ -3,21 +3,20 @@ from __future__ import division
 import numpy as np
 from scipy import stats
 
-from utils import mvn_weighted_logged, sample_discrete, stick_break_proc
-from utils import break_sticks
+from utils import mvn_weighted_logged, sample_discrete, stick_break_proc, \
+    break_sticks
 from dpmix import DPNormalMixture
+from munkres import munkres, get_cost
 
 # noinspection PyUnresolvedReferences, PyPackageRequirements
 import sampler
 
-from munkres import munkres, get_cost
-
 
 # check for GPU compatibility
 try:
-    # noinspection PyPackageRequirements
+    # noinspection PyPackageRequirements, PyUnresolvedReferences
     import pycuda
-    # noinspection PyPackageRequirements
+    # noinspection PyPackageRequirements, PyUnresolvedReferences
     import pycuda.driver
     # noinspection PyUnresolvedReferences
     try:
@@ -61,12 +60,7 @@ class HDPNormalMixture(DPNormalMixture):
     \alpha_0 ~ Ga(g, h)
     \mu_k ~ N(0, m\Sigma_k)
     \Sigma_j ~ IW(nu0+2, nu0*Phi_k)
-
-    Returns
-    -------
-    **Attributes**
     """
-
     def __init__(self, data, ncomp=256, gamma0=10, m0=None,
                  nu0=None, Phi0=None, e0=5, f0=0.1, g0=0.1, h0=0.1,
                  mu0=None, Sigma0=None, weights0=None, alpha0=1,
@@ -209,7 +203,8 @@ class HDPNormalMixture(DPNormalMixture):
         sigma = self._Sigma0
 
         for i in range(-nburn, niter):
-            if isinstance(self.verbose, int) and self.verbose and \
+            if isinstance(self.verbose, int) and \
+                    self.verbose and \
                     not isinstance(self.verbose, bool):
                 if i % self.verbose == 0:
                     print i
@@ -228,10 +223,11 @@ class HDPNormalMixture(DPNormalMixture):
                 c0 = np.zeros((self.ncomp, self.ncomp), dtype=np.double)
                 for j in xrange(self.ncomp):
                     for ii in xrange(self.ngroups):
+                        # noinspection PyTypeChecker
                         c0[j, :] += np.sum(z_ref[ii] == j)
 
             # update mu and sigma
-            counts = self._update_mu_Sigma(mu, sigma, labels)
+            counts = self._update_mu_sigma(mu, sigma, labels)
 
             # update weights, masks
             stick_weights, weights = self._update_stick_weights(
@@ -239,15 +235,29 @@ class HDPNormalMixture(DPNormalMixture):
                 beta,
                 alpha0
             )
+
             stick_beta, beta = sampler.sample_beta(
-                stick_beta, beta, stick_weights, alpha0,
-                alpha, self.AR, self.prop_scale, self.parallel
+                stick_beta,
+                beta,
+                stick_weights,
+                alpha0,
+                alpha,
+                self.AR,
+                self.prop_scale,
+                self.parallel
             )
+
             # hyper-parameters
             alpha = self._update_alpha(stick_beta)
-            alpha0 = sampler.sample_alpha0(stick_weights, beta, alpha0,
-                                           self.e0, self.f0,
-                                           self.prop_scale, self.AR)
+            alpha0 = sampler.sample_alpha0(
+                stick_weights,
+                beta,
+                alpha0,
+                self.e0,
+                self.f0,
+                self.prop_scale,
+                self.AR
+            )
 
             # Relabel
             if i > 0 and ident:
@@ -310,10 +320,10 @@ class HDPNormalMixture(DPNormalMixture):
         new_weights = np.zeros((self.ngroups, self.ncomp))
         new_stick_weights = np.zeros((self.ngroups, self.ncomp-1))
         for j in xrange(self.ngroups):
-            reverse_cumsum = counts[j][::-1].cumsum()[::-1]
+            reverse_cum_sum = counts[j][::-1].cumsum()[::-1]
 
             a = alpha0 * beta[:-1] + counts[j][:-1]
-            b = alpha0 * (1 - beta[:-1].cumsum()) + reverse_cumsum[1:]
+            b = alpha0 * (1 - beta[:-1].cumsum()) + reverse_cum_sum[1:]
             sticks_j, weights_j = stick_break_proc(a, b)
             new_weights[j] = weights_j
             new_stick_weights[j] = sticks_j
