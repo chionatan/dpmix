@@ -50,6 +50,7 @@ class HDPNormalMixture(DPNormalMixture):
     \mu_k ~ N(0, m\Sigma_k)
     \Sigma_j ~ IW(nu0+2, nu0*Phi_k)
     """
+    # noinspection PyMissingConstructor
     def __init__(self, data, ncomp=256, gamma0=10, m0=None,
                  nu0=None, Phi0=None, e0=5, f0=0.1, g0=0.1, h0=0.1,
                  mu0=None, Sigma0=None, weights0=None, alpha0=1,
@@ -117,8 +118,13 @@ class HDPNormalMixture(DPNormalMixture):
             self._beta0 = break_sticks(self._stick_beta0)
             self.e0, self.f0 = data.e0, data.f0
             self.e, self.f = data.e, data.f
+
+            # noinspection PyProtectedMember
             self._nu0 = data._nu0
+
+            # noinspection PyProtectedMember
             self._Phi0 = data._Phi0
+
             self.mu_prior_mean = data.mu_prior_mean.copy()
             self.gamma = data.gamma.copy()
             self._alpha0 = data.alpha[-1].copy()
@@ -253,7 +259,11 @@ class HDPNormalMixture(DPNormalMixture):
 
             # Relabel
             if i > 0 and ident:
+                # Both c0 & z_ref are always assigned in iteration 0
+                # noinspection PyUnboundLocalVariable
                 cost = c0.copy()
+
+                # noinspection PyUnboundLocalVariable
                 for Z, Zr in zip(z_hat, z_ref):
                     get_cost(Zr, Z, cost)
                 _, iii = np.where(munkres(cost))
@@ -308,9 +318,13 @@ class HDPNormalMixture(DPNormalMixture):
 
         return labels, z_hat
 
+    # HDP method has extra beta argument
+    # noinspection PyMethodOverriding
     def _update_stick_weights(self, counts, beta, alpha0):
+
         new_weights = np.zeros((self.ngroups, self.ncomp))
         new_stick_weights = np.zeros((self.ngroups, self.ncomp-1))
+
         for j in xrange(self.ngroups):
             reverse_cum_sum = counts[j][::-1].cumsum()[::-1]
 
@@ -319,6 +333,7 @@ class HDPNormalMixture(DPNormalMixture):
             sticks_j, weights_j = stick_break_proc(a, b)
             new_weights[j] = weights_j
             new_stick_weights[j] = sticks_j
+
         return new_stick_weights, new_weights
 
     # function to get log_post for beta
