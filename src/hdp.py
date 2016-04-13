@@ -162,8 +162,8 @@ class HDPNormalMixture(DPNormalMixture):
         """
         Performs MCMC sampling of the posterior. beta must be sampled
         using Metropolis Hastings and its proposal distribution will
-        be tuned every tune_interval iterations during the burnin
-        period. It is suggested that an ample burnin is used and the
+        be tuned every tune_interval iterations during the burn-in
+        period. It is suggested that an ample burn-in is used and the
         AR parameters stores the acceptance rate for the stick weights
         of beta and alpha_0.
 
@@ -191,7 +191,6 @@ class HDPNormalMixture(DPNormalMixture):
                 print "starting MCMC"
 
         self._setup_storage(niter, thin)
-        self._tune_interval = tune_interval
 
         alpha = self._alpha0
         alpha0 = self._alpha00
@@ -273,6 +272,7 @@ class HDPNormalMixture(DPNormalMixture):
                 weights = weights[:, iii]
                 mu = mu[iii]
                 sigma = sigma[iii]
+
             # save
             if i >= 0:
                 self.beta[i] = beta
@@ -281,8 +281,9 @@ class HDPNormalMixture(DPNormalMixture):
                 self.alpha0[i] = alpha0
                 self.mu[i] = mu
                 self.Sigma[i] = sigma
-            elif (nburn+i+1) % self._tune_interval == 0:
-                self._tune()
+            elif (nburn + i + 1) % tune_interval == 0:
+                self._tune(tune_interval)
+
         self.stick_beta = stick_beta.copy()
 
     def _setup_storage(self, niter=1000, thin=1):
@@ -400,7 +401,7 @@ class HDPNormalMixture(DPNormalMixture):
 
         return counts
 
-    def _tune(self):
+    def _tune(self, tune_interval):
         """
         Rate    Variance adaptation
         ----    -------------------
@@ -412,7 +413,7 @@ class HDPNormalMixture(DPNormalMixture):
         >0.95         x 10
         """
         for j in xrange(len(self.AR)):
-            ratio = self.AR[j] / self._tune_interval
+            ratio = self.AR[j] / tune_interval
             if ratio < 0.001:
                 self.prop_scale[j] *= np.sqrt(0.1)
             elif ratio < 0.05:

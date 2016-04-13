@@ -179,7 +179,7 @@ class DPNormalMixture(object):
         if ident is True the munkres identification algorithm will be
         used matching to the INITIAL VALUES. These should be selected
         with great care. We recommend using the EM algorithm. Also
-        .. burning doesn't make much sense in this case.
+        .. burn-in doesn't make much sense in this case.
 
         Parameters
         ----------
@@ -221,13 +221,19 @@ class DPNormalMixture(object):
                 callback(i)
 
             # update labels
-            labels, z_hat = self._update_labels(mu, sigma, weights, ident)
+            labels, z_hat = self._update_labels(
+                mu,
+                sigma,
+                weights,
+                ident=ident
+            )
 
             # get initial reference if needed
             if i == 0 and ident:
                 z_ref = z_hat.copy()
                 c0 = np.zeros((self.ncomp, self.ncomp), dtype=np.double)
                 for j in xrange(self.ncomp):
+                    # noinspection PyTypeChecker
                     c0[j, :] = np.sum(z_ref == j)
 
             # update mu and sigma
@@ -248,6 +254,7 @@ class DPNormalMixture(object):
                 mu = mu[iii]
                 sigma = sigma[iii]
 
+            # save
             if i >= 0:
                 self.weights[i] = weights
                 self.alpha[i] = alpha
