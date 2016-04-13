@@ -13,8 +13,8 @@ import numpy.random as npr
 import pymc as pm
 #
 from dpmix import DPNormalMixture
-from BEM import BEM_DPNormalMixture
-#from dpmix import DPNormalMixture, BEM_DPNormalMixture
+from BEM import BEMNormalMixture
+#from dpmix import DPNormalMixture, BEMNormalMixture
 
 #import gpustats as gs
 
@@ -66,7 +66,7 @@ if __name__ == '__main__':
     print mcmc.mu[-1]
     print mcmc.Sigma[-1]
 
-    bem = BEM_DPNormalMixture(mcmc, verbose=verbosity)
+    bem = BEMNormalMixture(mcmc, verbose=verbosity)
     bem.optimize(maxiter=5)
     print bem.mu
     

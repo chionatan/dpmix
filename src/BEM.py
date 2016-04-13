@@ -24,7 +24,7 @@ except ImportError:
     _has_gpu = False
 
 
-class BEM_DPNormalMixture(DPNormalMixture):
+class BEMNormalMixture(DPNormalMixture):
     """
     BEM algorithm for finding the posterior mode of the
     Truncated Dirichlet Process Mixture of Models 
@@ -64,7 +64,7 @@ class BEM_DPNormalMixture(DPNormalMixture):
         parallel = False  # Need to cythonize ....
 
         # for now, initialization is exactly the same ....
-        super(BEM_DPNormalMixture, self).__init__(
+        super(BEMNormalMixture, self).__init__(
             data, ncomp, gamma0, m0, nu0, Phi0, e0, f0,
             mu0, Sigma0, weights0, alpha0, parallel, verbose)
 
@@ -99,7 +99,7 @@ class BEM_DPNormalMixture(DPNormalMixture):
         ll_1 = 1
         it = 0
 
-        while np.abs(ll_1 - ll_2) > 0.01*perdiff and it < maxiter:
+        while np.abs(ll_1 - ll_2) > 0.01 * perdiff and it < maxiter:
             it += 1
 
             self.maximize_mu()

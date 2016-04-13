@@ -5,5 +5,5 @@ Created on Mar 15, 2012
 """
 
 from dpmix import DPNormalMixture
-from BEM import BEM_DPNormalMixture
+from BEM import BEMNormalMixture
 from hdp import HDPNormalMixture
