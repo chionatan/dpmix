@@ -190,7 +190,6 @@ class HDPNormalMixture(DPNormalMixture):
             if self.verbose:
                 print "starting MCMC"
 
-        self._ident = ident
         self._setup_storage(niter, thin)
         self._tune_interval = tune_interval
 
@@ -213,7 +212,12 @@ class HDPNormalMixture(DPNormalMixture):
                 callback(i)
 
             # update labels
-            labels, z_hat = self._update_labels(mu, sigma, weights)
+            labels, z_hat = self._update_labels(
+                mu,
+                sigma,
+                weights,
+                ident=ident
+            )
 
             # Get initial reference if needed
             if i == 0 and ident:
@@ -290,7 +294,7 @@ class HDPNormalMixture(DPNormalMixture):
         self.alpha = np.zeros(n_results)
         self.alpha0 = np.zeros(n_results)
 
-    def _update_labels(self, mu, sigma, weights):
+    def _update_labels(self, mu, sigma, weights, ident=False):
         # gets the latent classifications
         z_hat = []
         if self.gpu_data is not None:
@@ -299,7 +303,7 @@ class HDPNormalMixture(DPNormalMixture):
                 weights,
                 mu,
                 sigma,
-                self._ident
+                ident
             )
         else:
             labels = [np.zeros(self.nobs[j]) for j in range(self.ngroups)]
@@ -311,7 +315,7 @@ class HDPNormalMixture(DPNormalMixture):
                     weights[j]
                 )
                 labels[j] = sample_discrete(densities).squeeze()
-                if self._ident:
+                if ident:
                     z_hat.append(np.asarray(densities.argmax(1), dtype='i'))
 
         return labels, z_hat
