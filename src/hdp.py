@@ -273,8 +273,6 @@ class HDPNormalMixture(DPNormalMixture):
             elif (nburn + i + 1) % tune_interval == 0:
                 self._tune(tune_interval)
 
-        self.stick_beta = stick_beta.copy()
-
     def _setup_storage(self, niter=1000, thin=1):
         n_results = niter // thin
         self.weights = np.zeros((n_results, self.ngroups, self.ncomp))
