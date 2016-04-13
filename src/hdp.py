@@ -28,17 +28,6 @@ except ImportError:
     _has_gpu = False
 
 
-# function to get log_post for beta
-def beta_post(stick_beta, beta, stick_weights, alpha0, alpha):
-    log_post = 0
-
-    a, b = alpha0*beta[:-1], alpha0*(1-beta[:-1].cumsum())
-    log_post += np.sum(stats.beta.logpdf(stick_weights, a, b))
-
-    log_post += np.sum(stats.beta.logpdf(stick_beta, 1, alpha))
-    return log_post
-
-
 class HDPNormalMixture(DPNormalMixture):
     """
     MCMC sampling for Doubly Truncated HDP Mixture of Normals for multiple
@@ -334,12 +323,23 @@ class HDPNormalMixture(DPNormalMixture):
             new_stick_weights[j] = sticks_j
         return new_stick_weights, new_weights
 
+    # function to get log_post for beta
+    @staticmethod
+    def beta_post(stick_beta, beta, stick_weights, alpha0, alpha):
+        log_post = 0
+
+        a, b = alpha0 * beta[:-1], alpha0 * (1 - beta[:-1].cumsum())
+        log_post += np.sum(stats.beta.logpdf(stick_weights, a, b))
+
+        log_post += np.sum(stats.beta.logpdf(stick_beta, 1, alpha))
+        return log_post
+
     def _update_beta(self, stick_beta, beta, stick_weights, alpha0, alpha):
 
         old_stick_beta = stick_beta.copy()
         for k in xrange(self.ncomp-1):
             # get initial log post
-            log_post = beta_post(
+            log_post = self.beta_post(
                 stick_beta,
                 beta,
                 stick_weights,
@@ -358,7 +358,7 @@ class HDPNormalMixture(DPNormalMixture):
             beta = break_sticks(stick_beta)
 
             # get new posterior
-            log_post_new = beta_post(
+            log_post_new = self.beta_post(
                 stick_beta,
                 beta,
                 stick_weights,
