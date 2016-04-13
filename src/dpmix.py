@@ -21,9 +21,9 @@ from munkres import munkres, get_cost
 
 # check for GPU compatibility
 try:
-    # noinspection PyPackageRequirements
+    # noinspection PyPackageRequirements, PyUnresolvedReferences
     import pycuda
-    # noinspection PyPackageRequirements
+    # noinspection PyPackageRequirements, PyUnresolvedReferences
     import pycuda.driver
     # noinspection PyUnresolvedReferences
     try:
@@ -87,7 +87,7 @@ class DPNormalMixture(object):
             self.mu_prior_mean = data.mu_prior_mean
             nu0 = data._nu0
             Phi0 = data._Phi0
-            if len(data.mu.shape)>2:
+            if len(data.mu.shape) > 2:
                 mu0 = data.mu[-1].copy()
                 Sigma0 = data.Sigma[-1].copy()
                 weights0 = data.weights[-1].copy()
@@ -110,7 +110,7 @@ class DPNormalMixture(object):
                 if len(m0) == self.ndim:
                     self.mu_prior_mean = m0.copy()
                 elif len(m0) == 1:
-                    self.mu_prior_mean = m0*np.ones(self.ndim)
+                    self.mu_prior_mean = m0 * np.ones(self.ndim)
             else:
                 self.mu_prior_mean = np.zeros(self.ndim)
 
@@ -131,8 +131,8 @@ class DPNormalMixture(object):
         )
 
         # Check data for non-contiguous crap
-        if not (self.data.flags["C_CONTIGUOUS"]
-                or self.data.flags["F_CONTIGUOUS"]):
+        if not (self.data.flags["C_CONTIGUOUS"] or
+                self.data.flags["F_CONTIGUOUS"]):
             self.data = self.data.copy()
         
     def _set_initial_values(self, alpha0, nu0, Phi0, mu0, Sigma0, weights0,
@@ -283,10 +283,10 @@ class DPNormalMixture(object):
         else:
             densities = mvn_weighted_logged(self.data, mu, Sigma, weights)
             if ident:
-                Z = np.asarray(densities.argmax(1), dtype='i')
+                z = np.asarray(densities.argmax(1), dtype='i')
             else:
-                Z = None
-            return sample_discrete(densities).squeeze(), Z
+                z = None
+            return sample_discrete(densities).squeeze(), z
 
     def _update_stick_weights(self, counts, alpha):
 
