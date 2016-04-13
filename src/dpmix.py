@@ -107,7 +107,7 @@ class DPNormalMixture(object):
 
             self.gamma = gamma0*np.ones(ncomp)
             self.parallel = parallel
-                        
+
         self.verbose = verbose
 
         self._set_initial_values(

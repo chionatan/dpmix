@@ -10,9 +10,9 @@ from dpmix import DPNormalMixture
 
 # check for GPU compatibility
 try:
-    # noinspection PyPackageRequirements
+    # noinspection PyPackageRequirements, PyUnresolvedReferences
     import pycuda
-    # noinspection PyPackageRequirements
+    # noinspection PyPackageRequirements, PyUnresolvedReferences
     import pycuda.driver
     # noinspection PyUnresolvedReferences
     try:
@@ -67,6 +67,7 @@ class BEM_DPNormalMixture(DPNormalMixture):
         super(BEM_DPNormalMixture, self).__init__(
             data, ncomp, gamma0, m0, nu0, Phi0, e0, f0,
             mu0, Sigma0, weights0, alpha0, parallel, verbose)
+
         self.alpha = self._alpha0
         self.weights = self._weights0.copy()
         self.stick_weights = self.weights.copy()
@@ -74,6 +75,9 @@ class BEM_DPNormalMixture(DPNormalMixture):
         self.Sigma = self._Sigma0.copy()
         self.e_labels = np.tile(self.weights.flatten(), (self.nobs, 1))
         self.densities = None
+        self.ll = None
+        self.ct = None
+        self.xbar = None
 
     def optimize(self, maxiter=1000, perdiff=0.1, device=None):
         """
@@ -164,7 +168,7 @@ class BEM_DPNormalMixture(DPNormalMixture):
                 xj_d = (self.data - self.xbar[j, :]/self.ct[j])
                 ss = np.dot(xj_d.T * self.densities[:, j].flatten(), xj_d)
                 ss += self._Phi0[j] + \
-                    (self.ct[j] / (1+self.gamma[j] * self.ct[j])) * np.outer(
+                    (self.ct[j] / (1 + self.gamma[j] * self.ct[j])) * np.outer(
                         (1/self.ct[j]) * self.xbar[j, :] - self.mu_prior_mean,
                         (1/self.ct[j]) * self.xbar[j, :] - self.mu_prior_mean
                     )
@@ -176,7 +180,7 @@ class BEM_DPNormalMixture(DPNormalMixture):
             self.ct / (self.alpha - 1 + self.ct[::-1].cumsum()[::-1])
         )
         self.stick_weights = np.maximum(
-            np.ones(len(self.stick_weights))*1e-10,
+            np.ones(len(self.stick_weights)) * 1e-10,
             self.stick_weights
         )
         self.stick_weights[-1] = 1.
