@@ -75,7 +75,7 @@ class BEM_DPNormalMixture(DPNormalMixture):
         self.Sigma = self._Sigma0.copy()
         self.e_labels = np.tile(self.weights.flatten(), (self.nobs, 1))
         self.densities = None
-        self.ll = None
+        self.log_likelihood = None
         self.ct = None
         self.x_bar = None
 
@@ -112,7 +112,7 @@ class BEM_DPNormalMixture(DPNormalMixture):
                 
     def log_posterior(self):
         # just the log likelihood right now because im lazy ... 
-        return self.ll
+        return self.log_likelihood
 
     def expected_labels(self):
         if self.gpu_data is not None:
@@ -125,7 +125,7 @@ class BEM_DPNormalMixture(DPNormalMixture):
 
             densities = np.exp(densities)
             norm = densities.sum(1)
-            self.ll = np.sum(np.log(norm))
+            self.log_likelihood = np.sum(np.log(norm))
             densities = (densities.T / norm).T
 
             self.ct = np.asarray(densities.sum(0), dtype='d')
@@ -144,7 +144,7 @@ class BEM_DPNormalMixture(DPNormalMixture):
             )
             densities = np.exp(densities)
             norm = densities.sum(1)
-            self.ll = np.sum(np.log(norm))
+            self.log_likelihood = np.sum(np.log(norm))
             densities = (densities.T / norm).T
             self.ct = densities.sum(0)
             self.x_bar = np.dot(densities.T, self.data)
