@@ -35,8 +35,8 @@ class HDPNormalMixture(DPNormalMixture):
 
     Parameters
     -----------
-    data :  list of ndarrays (nobs x ndim) -- ndim must be equal .. not nobs
-    ncomp : nit
+    data :  list of ndarray instances (nobs x ndim) -- ndim must be equal
+    ncomp : int
         Number of mixture components
 
     Notes
@@ -56,93 +56,71 @@ class HDPNormalMixture(DPNormalMixture):
                  mu0=None, Sigma0=None, weights0=None, alpha0=1,
                  parallel=False, verbose=False):
 
-        # regardless of data class or _has_gpu, initialize gpu data to None
+        # regardless of _has_gpu, initialize gpu data to None
         # this gets set in sample method if a gpu device is available
         self.gpu_data = None
 
-        if not issubclass(type(data), HDPNormalMixture):
-            self.parallel = parallel
-
-            # get the data .. should add checks here later
-            self.data = [np.asarray(d) for d in data]
-            self.ngroups = len(self.data)
-            self.ndim = self.data[0].shape[1]
-            self.nobs = tuple([d.shape[0] for d in self.data])
-
-            # need for ident code
-            self.cumobs = np.zeros(self.ngroups+1, dtype=np.uint32)
-            self.cumobs[1:] = np.asarray(self.nobs).cumsum()
-            self.ncomp = ncomp
-
-            if m0 is not None:
-                if len(m0) == self.ndim:
-                    self.mu_prior_mean = m0.copy()
-                elif len(m0) == 1:
-                    self.mu_prior_mean = m0*np.ones(self.ndim)
-            else:
-                self.mu_prior_mean = np.zeros(self.ndim)
-
-                self.gamma = gamma0*np.ones(ncomp)
-
-            self._set_initial_values(alpha0, nu0, Phi0, mu0, Sigma0,
-                                     weights0, e0, f0)
-            # initialize hdp specific vars
-            if weights0 is None:
-                self._weights0 = np.zeros(
-                    (self.ngroups, self.ncomp),
-                    dtype=np.float)
-                self._weights0.fill(1/self.ncomp)
-            else:
-                self._weights0 = weights0.copy()
-            self._stick_beta0 = stats.beta.rvs(
-                1,
-                self._alpha0,
-                size=self.ncomp-1)
-            self._beta0 = break_sticks(self._stick_beta0)
-            self._alpha00 = 1.0
-            self.e0, self.f0 = g0, h0
-            # start out small? more accepts?
-            self.prop_scale = 0.01 * np.ones(self.ncomp)
-            self.prop_scale[-1] = 1.
-
-        else:
-            # get all important vars from input class
-            self.data = data.data
-            self.ngroups = data.ngroups
-            self.nobs = data.nobs
-            self.ndim = data.ndim
-            self.ncomp = data.ncomp
-            self.cumobs = data.cumobs.copy()
-            self._weights0 = data.weights[-1].copy()
-            self._stick_beta0 = data.stick_beta.copy()
-            self._beta0 = break_sticks(self._stick_beta0)
-            self.e0, self.f0 = data.e0, data.f0
-            self.e, self.f = data.e, data.f
-
-            # noinspection PyProtectedMember
-            self._nu0 = data._nu0
-
-            # noinspection PyProtectedMember
-            self._Phi0 = data._Phi0
-
-            self.mu_prior_mean = data.mu_prior_mean.copy()
-            self.gamma = data.gamma.copy()
-            self._alpha0 = data.alpha[-1].copy()
-            self._alpha00 = data.alpha0[-1].copy()
-            self._weights0 = data.weights[-1].copy()
-            self._mu0 = data.mu[-1].copy()
-            self._Sigma0 = data.Sigma[-1].copy()
-            self.prop_scale = data.prop_scale.copy()
-            self.parallel = data.parallel
-
-        self.AR = np.zeros(self.ncomp)
+        self.parallel = parallel
         self.verbose = verbose
 
-        # data working var
+        # get the data .. should add checks here later
+        self.data = [np.asarray(d) for d in data]
+        self.ngroups = len(self.data)
+        self.ndim = self.data[0].shape[1]
+        self.nobs = tuple([d.shape[0] for d in self.data])
+
+        # need for ident code
+        self.cumobs = np.zeros(self.ngroups+1, dtype=np.uint32)
+        self.cumobs[1:] = np.asarray(self.nobs).cumsum()
+
+        # combined data
         self.alldata = np.empty((sum(self.nobs), self.ndim), dtype=np.double)
         for i in xrange(self.ngroups):
             self.alldata[self.cumobs[i]:self.cumobs[i+1], :] = \
                 self.data[i].copy()
+
+        # number of cluster components
+        self.ncomp = ncomp
+
+        # hyper-parameters
+        self._alpha0 = alpha0
+        self.e = e0
+        self.f = f0
+
+        if m0 is not None:
+            if len(m0) == self.ndim:
+                self.mu_prior_mean = m0.copy()
+            elif len(m0) == 1:
+                self.mu_prior_mean = m0*np.ones(self.ndim)
+        else:
+            self.mu_prior_mean = np.zeros(self.ndim)
+
+            self.gamma = gamma0*np.ones(ncomp)
+
+        self._set_initial_values(nu0, Phi0, mu0, Sigma0)
+
+        # initialize hdp specific vars
+        if weights0 is None:
+            self._weights0 = np.zeros(
+                (self.ngroups, self.ncomp),
+                dtype=np.float)
+            self._weights0.fill(1/self.ncomp)
+        else:
+            self._weights0 = weights0.copy()
+
+        self._stick_beta0 = stats.beta.rvs(
+            1,
+            self._alpha0,
+            size=self.ncomp-1)
+        self._beta0 = break_sticks(self._stick_beta0)
+        self._alpha00 = 1.0
+        self.e0, self.f0 = g0, h0
+
+        # start out small? more accepts?
+        self.prop_scale = 0.01 * np.ones(self.ncomp)
+        self.prop_scale[-1] = 1.
+
+        self.AR = np.zeros(self.ncomp)
 
     def sample(
             self,

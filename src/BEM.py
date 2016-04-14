@@ -31,7 +31,7 @@ class BEMNormalMixture(DPNormalMixture):
 
     Parameters
     ----------
-    data : ndarray (nobs x ndim)  or (BEM_)DPNormalMixture class
+    data : ndarray (nobs x ndim)
     ncomp : int
         Number of mixture components
 
@@ -49,13 +49,7 @@ class BEMNormalMixture(DPNormalMixture):
     computation: Studies in massively parallel massive mixtures.'
     Journal of Computational and Graphical Statistics. 19 (2010):
     419-438
-
-    Returns
-    -------
-    **Attributes**
-
     """
-
     def __init__(self, data, ncomp=256, gamma0=100, m0=None,
                  nu0=None, Phi0=None, e0=10, f0=1,
                  mu0=None, Sigma0=None, weights0=None, alpha0=1,

@@ -33,7 +33,7 @@ class DPNormalMixture(object):
 
     Parameters
     ----------
-    data : ndarray (nobs x ndim) or (BEM_)DPNormalMixture class
+    data : ndarray (nobs x ndim)
     ncomp : int
         Number of mixture components
 
@@ -67,67 +67,50 @@ class DPNormalMixture(object):
                  mu0=None, Sigma0=None, weights0=None, alpha0=1,
                  parallel=True, verbose=False):
 
-        # regardless of data class or _has_gpu, initialize gpu data to None
+        self.parallel = parallel
+        self.verbose = verbose
+
+        # regardless of _has_gpu, initialize gpu data to None
         # this gets set in sample method if a gpu device is available
         self.gpu_data = None
 
-        if issubclass(type(data), DPNormalMixture):
-            self.data = data.data
-            self.nobs, self.ndim = self.data.shape
-            self.ncomp = data.ncomp
-            self.mu_prior_mean = data.mu_prior_mean
-            nu0 = data._nu0
-            Phi0 = data._Phi0
-            if len(data.mu.shape) > 2:
-                mu0 = data.mu[-1].copy()
-                Sigma0 = data.Sigma[-1].copy()
-                weights0 = data.weights[-1].copy()
-            else:
-                mu0 = data.mu.copy()
-                Sigma0 = data.Sigma.copy()
-                weights0 = data.weights.copy()
-            e0 = data.e
-            f0 = data.f
-            self.gamma = data.gamma
-            self.parallel = data.parallel
-        else:
-            self.data = np.asarray(data)
-            self.nobs, self.ndim = self.data.shape
-            self.ncomp = ncomp
+        # setup our data and its dimensions
+        self.data = np.asarray(data)
+        self.nobs, self.ndim = self.data.shape
 
-            # TODO hyper-parameters
-            # prior mean for component means
-            if m0 is not None:
-                if len(m0) == self.ndim:
-                    self.mu_prior_mean = m0.copy()
-                elif len(m0) == 1:
-                    self.mu_prior_mean = m0 * np.ones(self.ndim)
-            else:
-                self.mu_prior_mean = np.zeros(self.ndim)
-
-            self.gamma = gamma0*np.ones(ncomp)
-            self.parallel = parallel
-
-        self.verbose = verbose
-
-        self._set_initial_values(
-            alpha0,
-            nu0,
-            Phi0,
-            mu0,
-            Sigma0,
-            weights0,
-            e0,
-            f0
-        )
-
-        # Check data for non-contiguous crap
+        # check data for non-contiguous crap
         if not (self.data.flags["C_CONTIGUOUS"] or
                 self.data.flags["F_CONTIGUOUS"]):
             self.data = self.data.copy()
+
+        # number of cluster components
+        self.ncomp = ncomp
+
+        # prior mean for component means
+        if m0 is not None:
+            if len(m0) == self.ndim:
+                self.mu_prior_mean = m0.copy()
+            elif len(m0) == 1:
+                self.mu_prior_mean = m0 * np.ones(self.ndim)
+        else:
+            self.mu_prior_mean = np.zeros(self.ndim)
+
+        self.gamma = gamma0*np.ones(ncomp)
+
+        # hyper-parameters
+        self._alpha0 = alpha0
+        self.e = e0
+        self.f = f0
+
+        self._set_initial_values(nu0, Phi0, mu0, Sigma0)
+
+        # set initial weights
+        if weights0 is None:
+            weights0 = (1 / self.ncomp) * np.ones((self.ncomp, 1))
+
+        self._weights0 = weights0
         
-    def _set_initial_values(self, alpha0, nu0, Phi0, mu0, Sigma0, weights0,
-                            e0, f0):
+    def _set_initial_values(self, nu0, Phi0, mu0, Sigma0):
         if nu0 is None:
             nu0 = 1
 
@@ -150,14 +133,6 @@ class DPNormalMixture(object):
                     self.gamma[j] * Sigma0[j]
                 )
 
-        if weights0 is None:
-            weights0 = (1/self.ncomp)*np.ones((self.ncomp, 1))
-
-        self._alpha0 = alpha0
-        self.e = e0
-        self.f = f0
-
-        self._weights0 = weights0
         self._mu0 = mu0
         self._Sigma0 = Sigma0
         self._nu0 = nu0  # prior degrees of freedom
