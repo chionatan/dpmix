@@ -3,14 +3,22 @@ Written by: Andrew Cron
 """
 
 import numpy as np
+
+# noinspection PyPackageRequirements
 import gpustats
+
+# noinspection PyPackageRequirements
 import gpustats.util as gpu_util
+
+# noinspection PyPackageRequirements
 import gpustats.sampler as gpu_sampler
+
+# noinspection PyPackageRequirements
 from pycuda.gpuarray import to_gpu
 import cuda_functions
 
 
-def init_GPUWorkers(data, device_number):
+def init_gpu_data(data, device_number):
     """
     Send data to GPU device
     """
@@ -18,7 +26,7 @@ def init_GPUWorkers(data, device_number):
     gpu_util.threadSafeInit(device_number)
     gpu_data = []
 
-    # dpmix and BEM
+    # DP and BEM
     if type(data) == np.ndarray:
         gpu_data.append(to_gpu(np.asarray(data, dtype=np.float32)))
     else:  # HDP...one or more data sets per GPU
@@ -28,16 +36,16 @@ def init_GPUWorkers(data, device_number):
     return gpu_data
 
 
-def get_hdp_labels_GPU(gpu_data, w, mu, Sigma, relabel=False):
+def get_hdp_labels_gpu(gpu_data, w, mu, sigma, relabel=False):
 
     labels = []
-    Z = []
+    z = []
 
     for i, data_set in enumerate(gpu_data):
         densities = gpustats.mvnpdf_multi(
             data_set,
             mu,
-            Sigma,
+            sigma,
             weights=w[i].flatten(),
             get=False,
             logged=True,
@@ -45,14 +53,14 @@ def get_hdp_labels_GPU(gpu_data, w, mu, Sigma, relabel=False):
         )
 
         if relabel:
-            Z.append(
+            z.append(
                 np.asarray(
                     cuda_functions.gpu_apply_row_max(densities)[1].get(),
                     dtype='i'
                 )
             )
         else:
-            Z.append(None)
+            z.append(None)
 
         labels.append(
             np.asarray(
@@ -64,14 +72,14 @@ def get_hdp_labels_GPU(gpu_data, w, mu, Sigma, relabel=False):
         densities.gpudata.free()
         del densities
 
-    return labels, Z
+    return labels, z
 
 
-def get_labelsGPU(gpu_data, w, mu, Sigma, relabel=False):
+def get_dp_labels_gpu(gpu_data, w, mu, sigma, relabel=False):
     densities = gpustats.mvnpdf_multi(
         gpu_data[0],
         mu,
-        Sigma,
+        sigma,
         weights=w.flatten(),
         get=False,
         logged=True,
@@ -79,12 +87,12 @@ def get_labelsGPU(gpu_data, w, mu, Sigma, relabel=False):
     )
 
     if relabel:
-        Z = np.asarray(
+        z = np.asarray(
             cuda_functions.gpu_apply_row_max(densities)[1].get(),
             dtype='i'
         )
     else:
-        Z = None
+        z = None
 
     labels = np.asarray(
         gpu_sampler.sample_discrete(densities, logged=True),
@@ -94,14 +102,14 @@ def get_labelsGPU(gpu_data, w, mu, Sigma, relabel=False):
     densities.gpudata.free()
     del densities
 
-    return labels, Z
+    return labels, z
 
 
-def get_expected_labels_GPU(gpu_data, w, mu, Sigma):
+def get_bem_densities_gpu(gpu_data, w, mu, sigma):
     densities = gpustats.mvnpdf_multi(
         gpu_data[0],
         mu,
-        Sigma,
+        sigma,
         weights=w.flatten(),
         get=False,
         logged=True,

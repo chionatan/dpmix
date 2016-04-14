@@ -16,7 +16,7 @@ try:
     import pycuda.driver
     # noinspection PyUnresolvedReferences
     try:
-        from utils_gpu import init_GPUWorkers, get_expected_labels_GPU
+        from utils_gpu import init_gpu_data, get_bem_densities_gpu
         _has_gpu = True
     except (ImportError, pycuda.driver.RuntimeError):
         _has_gpu = False
@@ -89,7 +89,7 @@ class BEMNormalMixture(DPNormalMixture):
         if _has_gpu and device is not None:
             if self.verbose:
                 print "starting GPU enabled BEM"
-            self.gpu_data = init_GPUWorkers(self.data, device)
+            self.gpu_data = init_gpu_data(self.data, device)
         else:
             if self.verbose:
                 print "starting BEM"
@@ -116,7 +116,7 @@ class BEMNormalMixture(DPNormalMixture):
 
     def expected_labels(self):
         if self.gpu_data is not None:
-            densities = get_expected_labels_GPU(
+            densities = get_bem_densities_gpu(
                 self.gpu_data,
                 self.weights,
                 self.mu,

@@ -19,7 +19,7 @@ try:
     import pycuda.driver
     # noinspection PyUnresolvedReferences
     try:
-        from utils_gpu import init_GPUWorkers, get_labelsGPU
+        from utils_gpu import init_gpu_data, get_dp_labels_gpu
         _has_gpu = True
     except (ImportError, pycuda.driver.RuntimeError):
         _has_gpu = False
@@ -197,7 +197,7 @@ class DPNormalMixture(object):
 
         if _has_gpu and device is not None:
             # if a gpu is available, send data to device & save gpu_data
-            self.gpu_data = init_GPUWorkers(self.data, device)
+            self.gpu_data = init_gpu_data(self.data, device)
             if self.verbose:
                 print "starting GPU enabled MCMC"
         else:
@@ -266,7 +266,7 @@ class DPNormalMixture(object):
 
     def _update_labels(self, mu, Sigma, weights, ident=False):
         if self.gpu_data is not None:
-            return get_labelsGPU(
+            return get_dp_labels_gpu(
                 self.gpu_data,
                 weights,
                 mu,

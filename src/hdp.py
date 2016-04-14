@@ -20,7 +20,7 @@ try:
     import pycuda.driver
     # noinspection PyUnresolvedReferences
     try:
-        from utils_gpu import init_GPUWorkers, get_hdp_labels_GPU
+        from utils_gpu import init_gpu_data, get_hdp_labels_gpu
         _has_gpu = True
     except (ImportError, pycuda.driver.RuntimeError):
         _has_gpu = False
@@ -178,7 +178,7 @@ class HDPNormalMixture(DPNormalMixture):
         """
         if _has_gpu and device is not None:
             # if a gpu is available, send data to device & save gpu_data
-            self.gpu_data = init_GPUWorkers(self.data, device)
+            self.gpu_data = init_gpu_data(self.data, device)
             if self.verbose:
                 print "starting GPU enabled MCMC"
         else:
@@ -290,7 +290,7 @@ class HDPNormalMixture(DPNormalMixture):
         # gets the latent classifications
         z_hat = []
         if self.gpu_data is not None:
-            return get_hdp_labels_GPU(
+            return get_hdp_labels_gpu(
                 self.gpu_data,
                 weights,
                 mu,
