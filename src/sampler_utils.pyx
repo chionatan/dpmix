@@ -253,7 +253,9 @@ cdef vec __sample_mu_Sigma(mat * mu, cube * Sigma, vec * labels, mat * data,
         mask.at(k).push_back(i)
         if is_hdp:
             hdp_count_ptr[cnt*ncomp + k] += 1
-            if i >= hdp_rngs.at(cnt):
+
+            # hdp ranges contain data counts, not indices, so subtract 1
+            if i >= hdp_rngs.at(cnt) - 1:
                 cnt += 1
 
     for k in prange(ncomp,nogil=True, num_threads=nthd, schedule='dynamic', chunksize=chunk):
