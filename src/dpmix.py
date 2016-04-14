@@ -95,6 +95,10 @@ class DPNormalMixture(object):
         else:
             self.mu_prior_mean = np.zeros(self.ndim)
 
+        # Note: gamma is defined here as a list of length n_components,
+        # and all values in the list are set to be equal. Odd that only the
+        # 1st index of gamma is ever used (see _update_mu_sigma), so I'm
+        # not sure gamma is really being used as intended
         self.gamma = gamma0*np.ones(ncomp)
 
         # hyper-parameters
