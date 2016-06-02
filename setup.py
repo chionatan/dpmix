@@ -1,7 +1,8 @@
 """
 Created on Mar 15, 2012
 
-@author: Jacob Frelinger
+Original Authors: Andrew Cron, Jacob Frelinger
+Maintainer: Scott White
 """
 
 from distutils.core import setup
@@ -12,13 +13,13 @@ from cyarma import include_dir as arma_dir
 from cyrand import include_dir as rng_dir
 
 setup(
-    name='dpmix',
-    version='0.4',
-    packages=['dpmix'],
-    package_dir={'dpmix': 'src'},
-    description='Optimized (and GPU enhanced) fitting of Gaussian Mixture Models',
-    maintainer='Jacob Frelinger',
-    maintainer_email='jacob.frelinger@duke.edu',
+    name='dpmix_exp',
+    version='0.5',
+    packages=['dpmix_exp'],
+    package_dir={'dpmix_exp': 'src'},
+    description='Optimized (& GPU enhanced) fitting of Gaussian Mixture Models',
+    maintainer='Scott White',
+    maintainer_email='scott.white@duke.edu',
     author='Andrew Cron',
     author_email='andrew.cron@duke.edu',
     url='https://github.com/andrewcron/pycdp',
@@ -28,20 +29,19 @@ setup(
         'matplotlib (>=1.0)',
         'cython (>=0.17)',
         'cyarma (==0.2)',
-        'cyrand (>=0.2)',
-        'mpi4py'
+        'cyrand (>=0.2)'
     ],
-    package_data={'dpmix': ['cufiles/*.cu']},
+    package_data={'dpmix_exp': ['cufiles/*.cu']},
     cmdclass={'build_ext': build_ext},
     ext_modules=[
         Extension(
-            "dpmix.munkres",
+            "dpmix_exp.munkres",
             ["src/munkres.pyx", "src/cpp/Munkres.cpp"],
             include_dirs=[get_include(), 'src/cpp', 'cpp/'],
             language='c++'
         ),
         Extension(
-            "dpmix.sampler",
+            "dpmix_exp.sampler",
             ["src/sampler_utils.pyx"],
             include_dirs=[
                 get_include(),

@@ -10,7 +10,6 @@ cimport cython # to disable bounds checks
 np.import_array()
 
 
-
 cdef extern from "cpp/Munkres.h":
     cdef cppclass Munkres:
         Munkres()
@@ -18,9 +17,10 @@ cdef extern from "cpp/Munkres.h":
 
 @cython.boundscheck(False)
 def munkres(np.ndarray[np.double_t,ndim=2, mode="c"] A not None):
-    '''
-    calculate the minimum cost assigment of a cost matrix (must be numpy.double type)
-    '''
+    """
+    calculate the minimum cost assignment of a
+    cost matrix (must be numpy.double type)
+    """
     cdef int x = A.shape[0]
     cdef int y = A.shape[1]
     
@@ -30,8 +30,9 @@ def munkres(np.ndarray[np.double_t,ndim=2, mode="c"] A not None):
     munk.solve(<double *> A.data, <int *> rslt.data, x, y)
     del munk
     return rslt.astype(np.bool)
+
 @cython.boundscheck(False)
-def _get_cost(np.ndarray[int, ndim=1] x, np.ndarray[int, ndim=1] y, np.ndarray[np.double_t, ndim=2] C):
+def get_cost(np.ndarray[int, ndim=1] x, np.ndarray[int, ndim=1] y, np.ndarray[np.double_t, ndim=2] C):
     cdef int n = x.shape[0]
     # shut off bounds check
     cdef int ii = 0

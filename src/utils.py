@@ -160,27 +160,3 @@ def break_sticks(V):
         prod *= 1 - V[k]
     pi[-1] = prod
     return pi
-
-
-# Task Classes
-class MCMC_Task(object):
-    def __init__(self, ncomp, relabel=False, dataind=0, gid=0):
-        self.ncomp = ncomp
-        self.relabel = relabel
-        self.dataind = dataind
-        self.gid = gid
-
-
-class BEM_Task(object):
-
-    def __init__(self, ncomp, dataind=0, gid=0):
-        self.ncomp = ncomp
-        self.dataind = dataind
-        self.gid = gid
-
-
-class Init_Task(object):
-
-    def __init__(self, dim1, dim2, dev_num):
-        self.nobs, self.ndim = dim1, dim2
-        self.dev_num = dev_num

@@ -120,7 +120,7 @@ cdef void _sample_component(vec & mu, mat & Sigma,
                             double gamma, vec & pr_mu,
                             double pr_nu, mat & pr_phi,
                             rng_sampler[double] & rng) nogil:
-    ## this samples the normal paremters for one component
+    ## this samples the normal parameters for one component
 
     # initialize working memory
     cdef int i,j,k,ii,nj
@@ -186,7 +186,8 @@ cdef void _sample_component(vec & mu, mat & Sigma,
     evals = evals / (1/gamma + <double>nj)
     #cdef vec new_mu = mvnormrand(post_mean, post_cov, rng)
     cdef vec new_mu = mvnormrand_eigs(post_mean, evals, evecs, rng)
-    ## copy sample mu over currect mu
+
+    ## copy sample mu over current mu
     for j in range(p):
         mu[j] = new_mu[j]
 
@@ -195,7 +196,6 @@ cdef void _sample_component(vec & mu, mat & Sigma,
     del new_Sigma_pt
     del evals_pt
     del evecs_pt
-    
 
     
 @cython.boundscheck(False)
@@ -213,7 +213,8 @@ cdef vec __sample_mu_Sigma(mat * mu, cube * Sigma, vec * labels, mat * data,
     cdef vec * count = new vec(ncomp)
     cdef vec * hdp_count
     cdef double * hdp_count_ptr
-    # hdp stuff ... 
+
+    # hdp stuff ...
     if hdp:
         J = hdp_rngs.n_elem
         hdp_count = new vec(ncomp*J)
@@ -252,12 +253,14 @@ cdef vec __sample_mu_Sigma(mat * mu, cube * Sigma, vec * labels, mat * data,
         mask.at(k).push_back(i)
         if is_hdp:
             hdp_count_ptr[cnt*ncomp + k] += 1
-            if i >= hdp_rngs.at(cnt):
+
+            # hdp ranges contain data counts, not indices, so subtract 1
+            if i >= hdp_rngs.at(cnt) - 1:
                 cnt += 1
 
     for k in prange(ncomp,nogil=True, num_threads=nthd, schedule='dynamic', chunksize=chunk):
         cSigma = cube_slice_view(Sigma, k)
-        cmu = mat_col_view(mu,k)
+        cmu = mat_col_view(mu, k)
         _sample_component(deref(cmu), deref(cSigma),
                           deref(data), deref(count)[k], deref(mask).at(k),
                           gamma, deref(pr_mu),
@@ -296,7 +299,7 @@ def sample_mu_Sigma(np.ndarray[np.double_t, ndim=2] mu_in,
     ## this code just handles type casting
     ## will eventually handle hdp and parallel issues
 
-    ## mu_in and Sigma_in are updated in place
+    ## mu_in and Sigma_in are updated in place (in _sample_component)
     
     ## convert to armadillo
     cdef mat * mu = numpy_to_mat(mu_in.T)
@@ -312,11 +315,11 @@ def sample_mu_Sigma(np.ndarray[np.double_t, ndim=2] mu_in,
     if hdp:
         ct = __sample_mu_Sigma(mu, Sigma, labels, data,
                                gamma, pr_mu, pr_nu, pr_phi, hdp_rngs, parallel, True)
-        return np.array(vec_to_numpy(ct, None), dtype=np.int).reshape(J,K)
+        return np.array(vec_to_numpy(ct, None), dtype=np.int).reshape(J, K)
     else:
         ct = __sample_mu_Sigma(mu, Sigma, labels, data,
                                gamma, pr_mu, pr_nu, pr_phi, hdp_rngs, parallel)
-        return np.array(vec_to_numpy(ct,None),dtype=np.int)
+        return np.array(vec_to_numpy(ct, None), dtype=np.int)
 
 ############### HDP Samplers ######################
 
