@@ -1,7 +1,8 @@
 """
 Created on Mar 15, 2012
 
-@author: Jacob Frelinger
+Original Authors: Andrew Cron, Jacob Frelinger
+Maintainer: Scott White
 """
 
 from distutils.core import setup
@@ -13,12 +14,12 @@ from cyrand import include_dir as rng_dir
 
 setup(
     name='dpmix_exp',
-    version='0.5a',
+    version='0.5',
     packages=['dpmix_exp'],
     package_dir={'dpmix_exp': 'src'},
     description='Optimized (& GPU enhanced) fitting of Gaussian Mixture Models',
-    maintainer='Jacob Frelinger',
-    maintainer_email='jacob.frelinger@duke.edu',
+    maintainer='Scott White',
+    maintainer_email='scott.white@duke.edu',
     author='Andrew Cron',
     author_email='andrew.cron@duke.edu',
     url='https://github.com/andrewcron/pycdp',
