@@ -5,8 +5,8 @@ Created on Mar 15, 2012
 """
 import numpy as np
 
-from utils import mvn_weighted_logged
-from dpmix import DPNormalMixture
+from .utils import mvn_weighted_logged
+from .dpmix import DPNormalMixture
 
 # check for GPU compatibility
 try:
@@ -16,7 +16,7 @@ try:
     import pycuda.driver
     # noinspection PyUnresolvedReferences
     try:
-        from utils_gpu import init_gpu_data, get_bem_densities_gpu
+        from .utils_gpu import init_gpu_data, get_bem_densities_gpu
         _has_gpu = True
     except (ImportError, pycuda.driver.RuntimeError):
         _has_gpu = False
@@ -82,11 +82,11 @@ class BEMNormalMixture(DPNormalMixture):
         """
         if _has_gpu and device is not None:
             if self.verbose:
-                print "starting GPU enabled BEM"
+                print("starting GPU enabled BEM")
             self.gpu_data = init_gpu_data(self.data, device)
         else:
             if self.verbose:
-                print "starting BEM"
+                print("starting BEM")
 
         self.expected_labels()
         ll_2 = self.log_posterior()
@@ -157,7 +157,7 @@ class BEMNormalMixture(DPNormalMixture):
             ) / np.tile((1. + self.gamma * self.ct).reshape(k, 1), (1, p))
 
     def maximize_sigma(self):
-        for j in xrange(self.ncomp):
+        for j in range(self.ncomp):
             if self.ct[j] > 0.1:
                 xj_d = (self.data - self.x_bar[j, :] / self.ct[j])
                 ss = np.dot(xj_d.T * self.densities[:, j].flatten(), xj_d)
@@ -184,7 +184,7 @@ class BEMNormalMixture(DPNormalMixture):
         
         pi[0] = v[0]
         prod = (1 - v[0])
-        for k in xrange(1, len(v)):
+        for k in range(1, len(v)):
             pi[k] = prod * v[k]
             prod *= 1 - v[k]
         pi[-1] = prod

@@ -3,12 +3,12 @@ from __future__ import division
 import numpy as np
 import numpy.random as npr
 
-from utils import mvn_weighted_logged, sample_discrete, stick_break_proc
-from wishart import invwishartrand_prec
-from munkres import munkres, get_cost
+from .utils import mvn_weighted_logged, sample_discrete, stick_break_proc
+from .wishart import invwishartrand_prec
+from .munkres import munkres, get_cost
 
 # noinspection PyUnresolvedReferences, PyPackageRequirements
-import sampler
+from . import sampler
 
 
 # check for GPU compatibility
@@ -125,13 +125,13 @@ class DPNormalMixture(object):
         if Sigma0 is None:
             # draw from prior .. bad idea for vague prior ??? 
             Sigma0 = np.empty((self.ncomp, self.ndim, self.ndim))
-            for j in xrange(self.ncomp):
+            for j in range(self.ncomp):
                 Sigma0[j] = invwishartrand_prec(nu0 + 1 + self.ndim, Phi0[j])
 
         # starting values, are these sensible?
         if mu0 is None:
             mu0 = np.empty((self.ncomp, self.ndim))
-            for j in xrange(self.ncomp):
+            for j in range(self.ncomp):
                 mu0[j] = npr.multivariate_normal(
                     np.zeros(self.ndim),
                     self.gamma[j] * Sigma0[j]
@@ -178,10 +178,10 @@ class DPNormalMixture(object):
             # if a gpu is available, send data to device & save gpu_data
             self.gpu_data = init_gpu_data(self.data, device)
             if self.verbose:
-                print "starting GPU enabled MCMC"
+                print("starting GPU enabled MCMC")
         else:
             if self.verbose:
-                print "starting MCMC"
+                print("starting MCMC")
 
         self._setup_storage(niter)
 
@@ -206,7 +206,7 @@ class DPNormalMixture(object):
             if i == 0 and ident:
                 z_ref = z_hat.copy()
                 c0 = np.zeros((self.ncomp, self.ncomp), dtype=np.double)
-                for j in xrange(self.ncomp):
+                for j in range(self.ncomp):
                     # noinspection PyTypeChecker
                     c0[j, :] = np.sum(z_ref == j)
 

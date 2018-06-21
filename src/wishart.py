@@ -9,7 +9,7 @@ def inv(x):
 
 
 def invwishartrand(nu,phi):
-    return inv(wishartrand(nu,phi))
+    return inv(wishartrand(nu, phi))
 
 
 def invwishartrand_prec(nu, phi):
@@ -38,4 +38,4 @@ if __name__ == '__main__':
     a = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
     px = np.array([pm.rinverse_wishart(nu, a) for i in range(10000)])
     x = np.array([invwishartrand(nu, a) for i in range(10000)])
-    print np.mean(x, 0), '\n', np.mean(px, 0)
+    print(np.mean(x, 0), '\n', np.mean(px, 0))

@@ -30,7 +30,7 @@ def init_gpu_data(data, device_number):
     if type(data) == np.ndarray:
         gpu_data.append(to_gpu(np.asarray(data, dtype=np.float32)))
     else:  # HDP...one or more data sets per GPU
-        for i in xrange(len(data)):
+        for i in range(len(data)):
             gpu_data.append(to_gpu(np.asarray(data[i], dtype=np.float32)))
 
     return gpu_data

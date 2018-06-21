@@ -14,7 +14,7 @@ from cyrand import include_dir as rng_dir
 
 setup(
     name='dpmix_exp',
-    version='0.5',
+    version='0.6',
     packages=['dpmix_exp'],
     package_dir={'dpmix_exp': 'src'},
     description='Optimized (& GPU enhanced) fitting of Gaussian Mixture Models',
@@ -25,7 +25,7 @@ setup(
     url='https://github.com/andrewcron/pycdp',
     requires=[
         'numpy (>=1.6)',
-        'scipy (>=0.6)',
+        'scipy',
         'matplotlib (>=1.0)',
         'cython (>=0.17)',
         'cyarma (==0.2)',

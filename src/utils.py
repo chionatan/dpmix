@@ -46,8 +46,8 @@ def mvn_weighted_logged(data, means, covs, weights):
         try:
             densities[:, i] = np.log(weights[i]) - const - np.log(np.diag(chol)).sum() - 0.5*(diff**2).sum(1)
         except ValueError:
-            print chol
-            print np.diag(chol)
+            print(chol)
+            print(np.diag(chol))
             raise ValueError
 
     return densities
@@ -57,10 +57,9 @@ def sample_discrete(densities, logged=True):
     # this will sample the discrete densities
     # if they are logged, they will be exponentiated IN PLACE
 
-
     n, p = densities.shape
 
-    #if we're logged exponentiate.
+    # if we're logged exponentiate.
     if logged:
         densities = np.exp((densities.T - densities.max(1)).T)
     norm = densities.sum(1)
@@ -132,7 +131,7 @@ def stick_break_proc(beta_a, beta_b, size=None):
 
     pi[0] = V[0]
     prod = (1 - V[0])
-    for k in xrange(1, len(V)):
+    for k in range(1, len(V)):
         pi[k] = prod * V[k]
         prod *= 1 - V[k]
     pi[-1] = prod
@@ -155,7 +154,7 @@ def break_sticks(V):
     pi = np.empty(n+1)
     pi[0] = V[0]
     prod = (1-V[0])
-    for k in xrange(1, n):
+    for k in range(1, n):
         pi[k] = prod * V[k]
         prod *= 1 - V[k]
     pi[-1] = prod

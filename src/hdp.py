@@ -3,13 +3,13 @@ from __future__ import division
 import numpy as np
 from scipy import stats
 
-from utils import mvn_weighted_logged, sample_discrete, stick_break_proc, \
+from .utils import mvn_weighted_logged, sample_discrete, stick_break_proc, \
     break_sticks
-from dpmix import DPNormalMixture
-from munkres import munkres, get_cost
+from .dpmix import DPNormalMixture
+from .munkres import munkres, get_cost
 
 # noinspection PyUnresolvedReferences, PyPackageRequirements
-import sampler
+from . import sampler
 
 
 # check for GPU compatibility
@@ -20,7 +20,7 @@ try:
     import pycuda.driver
     # noinspection PyUnresolvedReferences
     try:
-        from utils_gpu import init_gpu_data, get_hdp_labels_gpu
+        from .utils_gpu import init_gpu_data, get_hdp_labels_gpu
         _has_gpu = True
     except (ImportError, pycuda.driver.RuntimeError):
         _has_gpu = False
@@ -75,7 +75,7 @@ class HDPNormalMixture(DPNormalMixture):
 
         # combined data
         self.alldata = np.empty((sum(self.nobs), self.ndim), dtype=np.double)
-        for i in xrange(self.ngroups):
+        for i in range(self.ngroups):
             self.alldata[self.cumobs[i]:self.cumobs[i+1], :] = \
                 self.data[i].copy()
 
@@ -158,10 +158,10 @@ class HDPNormalMixture(DPNormalMixture):
             # if a gpu is available, send data to device & save gpu_data
             self.gpu_data = init_gpu_data(self.data, device)
             if self.verbose:
-                print "starting GPU enabled MCMC"
+                print("starting GPU enabled MCMC")
         else:
             if self.verbose:
-                print "starting MCMC"
+                print("starting MCMC")
 
         self._setup_storage(niter, thin)
 
@@ -188,11 +188,11 @@ class HDPNormalMixture(DPNormalMixture):
             # Get initial reference if needed
             if i == 0 and ident:
                 z_ref = []
-                for ii in xrange(self.ngroups):
+                for ii in range(self.ngroups):
                     z_ref.append(z_hat[ii].copy())
                 c0 = np.zeros((self.ncomp, self.ncomp), dtype=np.double)
-                for j in xrange(self.ncomp):
-                    for ii in xrange(self.ngroups):
+                for j in range(self.ncomp):
+                    for ii in range(self.ngroups):
                         # noinspection PyTypeChecker
                         c0[j, :] += np.sum(z_ref[ii] == j)
 
@@ -277,7 +277,7 @@ class HDPNormalMixture(DPNormalMixture):
             )
         else:
             labels = [np.zeros(self.nobs[j]) for j in range(self.ngroups)]
-            for j in xrange(self.ngroups):
+            for j in range(self.ngroups):
                 densities = mvn_weighted_logged(
                     self.data[j],
                     mu,
@@ -297,7 +297,7 @@ class HDPNormalMixture(DPNormalMixture):
         new_weights = np.zeros((self.ngroups, self.ncomp))
         new_stick_weights = np.zeros((self.ngroups, self.ncomp-1))
 
-        for j in xrange(self.ngroups):
+        for j in range(self.ngroups):
             reverse_cum_sum = counts[j][::-1].cumsum()[::-1]
 
             a = alpha0 * beta[:-1] + counts[j][:-1]
@@ -322,7 +322,7 @@ class HDPNormalMixture(DPNormalMixture):
     def _update_beta(self, stick_beta, beta, stick_weights, alpha0, alpha):
 
         old_stick_beta = stick_beta.copy()
-        for k in xrange(self.ncomp-1):
+        for k in range(self.ncomp-1):
             # get initial log post
             log_post = self.beta_post(
                 stick_beta,
@@ -397,7 +397,7 @@ class HDPNormalMixture(DPNormalMixture):
         >0.75         x 2
         >0.95         x 10
         """
-        for j in xrange(len(self.AR)):
+        for j in range(len(self.AR)):
             ratio = self.AR[j] / tune_interval
             if ratio < 0.001:
                 self.prop_scale[j] *= np.sqrt(0.1)
